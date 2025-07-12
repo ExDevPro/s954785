@@ -1,0 +1,6 @@
+      campaign.ico
+      leads.ico
+      smtp.ico
+      proxy.ico
+      report.ico
+      logo.ico

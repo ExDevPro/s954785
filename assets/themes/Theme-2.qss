@@ -1,0 +1,64 @@
+/* assets/themes/Default.qss - Basic Test Theme */
+
+QMainWindow {
+    background-color: #F0F0F0; /* Light grey background for the main window */
+}
+
+QWidget {
+    /* Sets a default font for all widgets unless overridden */
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    color: #333333; /* Dark grey text */
+}
+
+QPushButton {
+    background-color: #D0D0D0; /* Grey buttons */
+    border: 1px solid #B0B0B0;
+    padding: 5px 10px;
+    border-radius: 3px;
+    color: #111111;
+}
+
+QPushButton:hover {
+    background-color: #C0C0C0; /* Lighter grey on hover */
+    border: 1px solid #A0A0A0;
+}
+
+QPushButton:pressed {
+    background-color: #A0A0A0; /* Darker grey when pressed */
+}
+
+QListWidget#navigationList {
+    background-color: #E8E8E8; /* Slightly different grey for nav list */
+    border: none;
+    font-size: 11pt;
+}
+
+QListWidget#navigationList::item {
+    padding: 8px;
+    color: #000000; /* Black text for nav items */
+}
+
+QListWidget#navigationList::item:selected {
+    background-color: #0078D7; /* Blue selection */
+    color: white; /* White text when selected */
+}
+
+QLabel {
+    background-color: transparent; /* Ensure labels don't have unexpected backgrounds */
+    padding: 2px;
+}
+
+QComboBox#themeSelector {
+   padding: 3px;
+   border: 1px solid #B0B0B0;
+   border-radius: 3px;
+}
+
+QFrame#statCard {
+   background-color: white;
+   border: 1px solid #CCCCCC;
+   border-radius: 5px;
+}
+
+/* Add more basic rules if needed */

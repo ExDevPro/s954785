@@ -1,0 +1,202 @@
+/*=============================================
+  GLOBAL
+=============================================*/
+* {
+    font-family: "Segoe UI Semibold", sans-serif;
+    color: #333333;
+}
+QWidget {
+    background-color: #F5F7FA;
+}
+
+/*=============================================
+  SIDEBAR (Navigation)
+=============================================*/
+QListWidget {
+    background: #FFFFFF;
+    border: none;
+    padding-top: 8px;
+}
+QListWidget::item {
+    font-size: 14pt;
+    padding: 12px 20px;
+    height: 48px;
+    border-radius: 6px;
+}
+QListWidget::item:hover {
+    background-color: #E4F0FF;
+}
+QListWidget::item:selected {
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:0,
+        stop:0 #4A90E2, stop:1 #357ABD
+    );
+    color: #FFFFFF;
+}
+
+/*=============================================
+  STAT CARDS
+=============================================*/
+QFrame#statCard {
+    /* Simulated 3D bevel + gradient */
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #FFFFFF, stop:0.5 #F0F4FA, stop:1 #E4EAF5
+    );
+    border: 1px solid #BCC3D4;
+    border-radius: 10px;
+    padding: 16px;
+    margin: 8px;
+}
+QFrame#statCard:hover {
+    /* “Lift” on hover */
+    margin-top: 4px;
+    margin-bottom: 12px;
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #FFFFFF, stop:1 #E0E8FC
+    );
+}
+QLabel[class="statCount"] {
+    font-size: 24pt;
+    font-weight: bold;
+    color: #4A90E2;
+}
+
+/*=============================================
+  BUTTONS
+=============================================*/
+QPushButton {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6AA9F8, stop:1 #3A78C2
+    );
+    border: 1px solid #1C4F9F;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 11pt;
+    color: #FFFFFF;
+    min-width: 80px;
+}
+QPushButton:hover {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #7BB0FA, stop:1 #4A8DE5
+    );
+}
+QPushButton:pressed {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #2E62A0, stop:1 #1C4F9F
+    );
+    padding-top: 12px;
+    padding-bottom: 8px;
+}
+
+/*=============================================
+  PROGRESS BARS
+=============================================*/
+QProgressBar {
+    border: 1px solid #A0A8B8;
+    border-radius: 8px;
+    background: #E8EDF5;
+    text-align: center;
+    font-size: 9pt;
+}
+QProgressBar::chunk {
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:0,
+        stop:0 #4A90E2, stop:1 #357ABD
+    );
+    border-radius: 8px;
+}
+
+/*=============================================
+  TABLES & HEADERS
+=============================================*/
+QTableWidget, QHeaderView::section {
+    background: #FFFFFF;
+    gridline-color: #E0E4EB;
+    font-size: 10pt;
+}
+QHeaderView::section {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #F5F7FA, stop:1 #E8EBEF
+    );
+    padding: 8px;
+    border: 1px solid #C0C4CC;
+    font-weight: 600;
+}
+
+/*=============================================
+  INPUTS & GROUPBOX
+=============================================*/
+QSpinBox, QComboBox, QTextEdit {
+    background: #FFFFFF;
+    border: 1px solid #C0C4CC;
+    border-radius: 4px;
+    padding: 6px;
+    font-size: 10pt;
+}
+QGroupBox {
+    border: 1px solid #C0C4CC;
+    border-radius: 6px;
+    margin-top: 14px;
+}
+QGroupBox::title {
+    padding: 0 6px;
+    subcontrol-origin: margin;
+    font-weight: 600;
+}
+
+/*=============================================
+  SCROLLBARS & SPLITTER
+=============================================*/
+QScrollBar:vertical, QScrollBar:horizontal {
+    background: #E8EDF5;
+    width: 12px;
+    margin: 2px;
+}
+QScrollBar::handle {
+    background: #A0A4AC;
+    border-radius: 6px;
+}
+QScrollBar::handle:hover {
+    background: #8A8E96;
+}
+QSplitter::handle {
+    background-color: #C0C4CC;
+    width: 6px;
+}
+
+/*=============================================
+  TOOLBAR
+=============================================*/
+QToolBar {
+    background: #FFFFFF;
+    border-bottom: 1px solid #DDDDDD;
+}
+QToolBar QToolButton {
+    background: transparent;
+    border: none;
+    padding: 8px;
+}
+QToolBar QToolButton:hover {
+    background: #E8F0FF;
+    border-radius: 4px;
+}
+/* ── Enforce 12 pt on built‑in Qt dialogs ── */
+QInputDialog QLabel,
+QInputDialog QLineEdit,
+QMessageBox QLabel,
+QMessageBox QPushButton,
+QDialog QPushButton {
+    font-family: "Segoe UI Semibold", sans-serif;
+    font-size: 12pt;
+}
+
+/* ── Ensure all other widgets use at least 10 pt by default ── */
+QWidget {
+    font-size: 10pt;
+}

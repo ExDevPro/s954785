@@ -1,0 +1,278 @@
+/*=============================================
+  GLOBAL
+=============================================*/
+* {
+    font-family: "Segoe UI Semibold", sans-serif;
+    color: #333333;
+}
+QWidget {
+    background-color: #F5F7FA;
+}
+
+/*=============================================
+  SIDEBAR (Navigation)
+=============================================*/
+/* MODIFIED: Changed QListWidget to QListWidget#navigationList */
+QListWidget#navigationList {
+    background: #FFFFFF;
+    border: none;
+    padding-top: 8px;
+}
+/* MODIFIED: Added #navigationList prefix for specificity */
+QListWidget#navigationList::item {
+    font-size: 14pt;
+    padding: 12px 20px;
+    /* height: 48px; /* Consider removing fixed height or adjusting */
+    border-radius: 6px;
+}
+/* MODIFIED: Added #navigationList prefix */
+QListWidget#navigationList::item:hover {
+    background-color: #E4F0FF;
+}
+/* MODIFIED: Added #navigationList prefix */
+QListWidget#navigationList::item:selected {
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:0,
+        stop:0 #4A90E2, stop:1 #357ABD
+    );
+    color: #FFFFFF;
+}
+
+/*=============================================
+  STAT CARDS
+=============================================*/
+QFrame#statCard {
+    /* Simulated 3D bevel + gradient */
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #FFFFFF, stop:0.5 #F0F4FA, stop:1 #E4EAF5
+    );
+    border: 1px solid #BCC3D4;
+    border-radius: 10px;
+    padding: 16px; /* Adjust padding if content looks cramped */
+    /* margin: 8px; /* Margins here might conflict with grid spacing */
+}
+QFrame#statCard:hover {
+    /* "Lift" on hover - margin changes can cause layout shifts */
+    /* Consider using border or background changes instead */
+    /* margin-top: 4px; */
+    /* margin-bottom: 12px; */
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #FFFFFF, stop:1 #E0E8FC
+    );
+    border-color: #A0B0D0; /* Example: slightly change border on hover */
+}
+
+/* MODIFIED: Changed class selector to ID selector #statCountLabel */
+/* This requires setting objectName in Python (see Step 2) */
+QLabel#statCountLabel {
+    font-size: 24pt;
+    font-weight: bold; /* Use font-weight for bold */
+    color: #4A90E2;
+    background-color: transparent; /* Ensure transparent background */
+    border: none; /* Ensure no border is inherited */
+    padding: 0px; /* Reset padding */
+    margin: 0px; /* Reset margin */
+}
+
+/* Add style for the regular label inside stat card if needed */
+QFrame#statCard QLabel {
+    background-color: transparent; /* Ensure labels inside card are transparent */
+     /* Adjust font size/color if needed, but avoid conflicting with #statCountLabel */
+}
+
+
+/*=============================================
+  BUTTONS
+=============================================*/
+QPushButton {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #6AA9F8, stop:1 #3A78C2
+    );
+    border: 1px solid #1C4F9F;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 11pt;
+    color: #FFFFFF;
+    min-width: 80px;
+}
+QPushButton:hover {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #7BB0FA, stop:1 #4A8DE5
+    );
+}
+QPushButton:pressed {
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #2E62A0, stop:1 #1C4F9F
+    );
+    padding-top: 12px; /* Press effect using padding */
+    padding-bottom: 8px;
+}
+
+/* Add specific styles for theme dropdown if needed */
+QComboBox#themeSelector {
+    font-size: 9pt; /* Example: smaller font for dropdown */
+    padding: 4px;
+    border: 1px solid #BCC3D4;
+}
+
+
+/*=============================================
+  PROGRESS BARS
+=============================================*/
+QProgressBar {
+    border: 1px solid #A0A8B8;
+    border-radius: 8px;
+    background: #E8EDF5;
+    text-align: center;
+    font-size: 9pt;
+    color: #333333; /* Ensure text is visible */
+}
+QProgressBar::chunk {
+    background: qlineargradient(
+        x1:0, y1:0, x2:1, y2:0,
+        stop:0 #4A90E2, stop:1 #357ABD
+    );
+    border-radius: 8px; /* Match the container's border-radius */
+}
+
+/*=============================================
+  TABLES & HEADERS
+=============================================*/
+QTableWidget { /* Style the table widget itself */
+    background: #FFFFFF;
+    gridline-color: #E0E4EB;
+    font-size: 10pt;
+    border: 1px solid #C0C4CC; /* Add border to table */
+}
+
+QTableWidget::item { /* Style individual cells */
+    padding: 5px;
+}
+
+QHeaderView::section { /* Style header sections */
+    background: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #F5F7FA, stop:1 #E8EBEF
+    );
+    padding: 8px;
+    border: 1px solid #C0C4CC;
+    /* border-bottom: 2px solid #A0A8B8; /* Example: stronger bottom border */
+    font-weight: 600; /* Use font-weight */
+}
+
+/*=============================================
+  INPUTS & GROUPBOX
+=============================================*/
+QSpinBox, QComboBox, QTextEdit, QLineEdit { /* Added QLineEdit */
+    background: #FFFFFF;
+    border: 1px solid #C0C4CC;
+    border-radius: 4px;
+    padding: 6px;
+    font-size: 10pt;
+    color: #333333; /* Ensure text color is set */
+}
+QGroupBox {
+    border: 1px solid #C0C4CC;
+    border-radius: 6px;
+    margin-top: 14px; /* Space for the title */
+    padding: 10px; /* Add padding inside the box */
+}
+QGroupBox::title {
+    padding: 0 6px;
+    subcontrol-origin: margin;
+    subcontrol-position: top left; /* Position title */
+    font-weight: 600; /* Use font-weight */
+    color: #333333; /* Ensure title color */
+    /* Add background if needed, e.g., to overlap border cleanly */
+    /* background-color: #F5F7FA; */
+}
+
+/*=============================================
+  SCROLLBARS & SPLITTER
+=============================================*/
+QScrollBar:vertical, QScrollBar:horizontal {
+    background: #E8EDF5;
+    border: none; /* Remove border */
+    width: 12px;  /* Vertical scrollbar width */
+    height: 12px; /* Horizontal scrollbar height */
+    margin: 0px; /* Remove margin */
+}
+QScrollBar::handle {
+    background: #A0A4AC;
+    border-radius: 6px;
+    min-height: 20px; /* Ensure handle is visible */
+    min-width: 20px;
+}
+QScrollBar::handle:hover {
+    background: #8A8E96;
+}
+QScrollBar::add-line, QScrollBar::sub-line { /* Hide arrows */
+    border: none;
+    background: none;
+    height: 0px;
+    width: 0px;
+}
+QScrollBar::add-page, QScrollBar::sub-page { /* Background of the track */
+    background: none;
+}
+
+QSplitter::handle {
+    background-color: #C0C4CC;
+    /* width: 6px; /* Controlled by splitter.setHandleWidth in Python */
+}
+QSplitter::handle:hover {
+    background-color: #A0A4AC;
+}
+QSplitter::handle:pressed {
+    background-color: #8A8E96;
+}
+
+/*=============================================
+  TOOLBAR
+=============================================*/
+QToolBar {
+    background: #FFFFFF;
+    border-bottom: 1px solid #DDDDDD;
+    padding: 2px; /* Add some padding */
+}
+QToolBar QToolButton {
+    background: transparent;
+    border: none;
+    padding: 8px; /* Padding around the icon */
+    border-radius: 4px; /* Add radius for hover effect */
+}
+QToolBar QToolButton:hover {
+    background: #E8F0FF;
+}
+QToolBar QToolButton:pressed {
+    background: #D0E0F8; /* Pressed state */
+}
+
+/*=============================================
+  MISC & DIALOGS
+=============================================*/
+/* Ensure all widgets use at least 10 pt by default, unless overridden */
+/* This was redundant with the global QWidget rule, removed */
+
+/* Style specific dialogs if needed */
+QMessageBox, QInputDialog {
+    background-color: #FFFFFF; /* Example: White background for dialogs */
+    font-size: 10pt; /* Ensure consistent font size */
+}
+
+QMessageBox QLabel {
+     font-size: 10pt;
+     background-color: transparent;
+}
+QMessageBox QPushButton {
+     font-size: 10pt; /* Use 10pt for consistency or keep 12pt if preferred */
+     padding: 6px 15px; /* Slightly smaller padding for dialog buttons */
+}
+QInputDialog QLabel, QInputDialog QLineEdit {
+     font-size: 10pt;
+}

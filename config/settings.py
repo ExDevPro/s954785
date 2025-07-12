@@ -241,3 +241,21 @@ def init_config(config_file: Optional[str] = None) -> ConfigManager:
     global _config_instance
     _config_instance = ConfigManager(config_file)
     return _config_instance
+
+
+def update_config(updates: Dict[str, Any], save: bool = True) -> None:
+    """
+    Update configuration with new values.
+    
+    Args:
+        updates: Dictionary of configuration updates in dot notation
+                 e.g., {'app.debug': True, 'logging.level': 'DEBUG'}
+        save: Whether to save updates to user config file
+    """
+    config = get_config()
+    
+    for key, value in updates.items():
+        config.set(key, value)
+    
+    if save:
+        config.save_user_config()

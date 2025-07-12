@@ -10,7 +10,7 @@ This module provides encryption and decryption functionality for:
 import os
 import base64
 import hashlib
-from typing import Optional, Union, bytes as BytesType
+from typing import Optional, Union
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -24,7 +24,7 @@ logger = get_module_logger(__name__)
 class EncryptionManager:
     """Manages encryption and decryption operations."""
     
-    def __init__(self, password: Optional[str] = None, salt: Optional[BytesType] = None):
+    def __init__(self, password: Optional[str] = None, salt: Optional[bytes] = None):
         """
         Initialize encryption manager.
         
@@ -39,11 +39,11 @@ class EncryptionManager:
         if password:
             self._initialize_cipher(password)
     
-    def _generate_salt(self) -> BytesType:
+    def _generate_salt(self) -> bytes:
         """Generate a random salt for key derivation."""
         return os.urandom(16)
     
-    def _derive_key(self, password: str, salt: BytesType) -> BytesType:
+    def _derive_key(self, password: str, salt: bytes) -> bytes:
         """
         Derive encryption key from password and salt.
         
@@ -131,7 +131,7 @@ class EncryptionManager:
         except Exception as e:
             raise EncryptionError(f"Failed to decrypt string: {e}", operation="decryption")
     
-    def encrypt_bytes(self, data: BytesType) -> BytesType:
+    def encrypt_bytes(self, data: bytes) -> bytes:
         """
         Encrypt bytes data.
         
@@ -152,7 +152,7 @@ class EncryptionManager:
         except Exception as e:
             raise EncryptionError(f"Failed to encrypt bytes: {e}")
     
-    def decrypt_bytes(self, encrypted_data: BytesType) -> BytesType:
+    def decrypt_bytes(self, encrypted_data: bytes) -> bytes:
         """
         Decrypt bytes data.
         
@@ -358,7 +358,7 @@ class CredentialManager:
         logger.info(f"Imported {len(credentials)} credentials")
 
 
-def generate_password_hash(password: str, salt: Optional[BytesType] = None) -> tuple[str, str]:
+def generate_password_hash(password: str, salt: Optional[bytes] = None) -> tuple[str, str]:
     """
     Generate a hash of the password for verification purposes.
     

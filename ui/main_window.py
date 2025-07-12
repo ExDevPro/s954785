@@ -18,11 +18,11 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 # Import UI Managers - using new integrated versions where available
 from ui.leads_manager_integrated import IntegratedLeadsManager
 from ui.smtp_manager_integrated import IntegratedSMTPManager
+from ui.message_manager_integrated import IntegratedMessageManager
+from ui.campaign_builder_integrated import IntegratedCampaignBuilder
 from ui.subject_manager    import SubjectManager
-from ui.message_manager    import MessageManager # Make sure this is imported
 from ui.attachment_manager import AttachmentManager
 from ui.proxy_manager      import ProxyManager
-from ui.campaign_builder   import CampaignBuilder
 from ui.settings_panel     import SettingsPanel
 
 # Import foundation components for logging
@@ -226,12 +226,10 @@ class MainWindow(QMainWindow):
              self.dashboard_widget.refreshFinished.connect(self._hide_loading_indicator)
         else: print("E: Dashboard widget not found post-build.")
 
-        # *** Connect MessageManager signal ***
+        # *** Connect integrated manager signals ***
         if hasattr(self, 'message_manager') and self.message_manager:
-            logger.info("Connecting MessageManager signal")
-            self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
-            # *** Trigger initial count update ***
-            self.message_manager._update_dashboard_counts()
+            logger.info("Connecting IntegratedMessageManager signal")
+            # Signal is already connected above during widget creation
         else:
             logger.warning("MessageManager not found, cannot connect signal")
 
@@ -343,13 +341,17 @@ class MainWindow(QMainWindow):
         # Other managers (keeping existing for now)
         self.stack.addWidget(SubjectManager())
         
-        # Make sure MessageManager is at index NAV_MAP["Messages"] (which is 4)
-        self.message_manager = MessageManager()
-        self.stack.addWidget(self.message_manager) # <<< This needs to be the correct instance
+        # Message Manager (Integrated)
+        self.message_manager = IntegratedMessageManager()
+        self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
+        self.stack.addWidget(self.message_manager)
         
         self.stack.addWidget(AttachmentManager())
         self.stack.addWidget(ProxyManager())
-        self.stack.addWidget(CampaignBuilder())
+        
+        # Campaign Builder (Integrated)
+        self.campaign_builder = IntegratedCampaignBuilder()
+        self.stack.addWidget(self.campaign_builder)
         
         self.settings_panel = SettingsPanel(self.base_path, self.config, self.config_path)
         self.stack.addWidget(self.settings_panel)

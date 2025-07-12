@@ -15,15 +15,20 @@ from PyQt6.QtGui import QIcon, QFont, QPalette, QPixmap, QCursor, QMovie
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-# Import other UI Managers
-from ui.leads_manager      import LeadsManager
-from ui.smtp_manager       import SMTPManager
+# Import UI Managers - using new integrated versions where available
+from ui.leads_manager_integrated import IntegratedLeadsManager
+from ui.smtp_manager_integrated import IntegratedSMTPManager
 from ui.subject_manager    import SubjectManager
 from ui.message_manager    import MessageManager # Make sure this is imported
 from ui.attachment_manager import AttachmentManager
 from ui.proxy_manager      import ProxyManager
 from ui.campaign_builder   import CampaignBuilder
 from ui.settings_panel     import SettingsPanel
+
+# Import foundation components for logging
+from core.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 # --- StatCard ---
 # (Remains the same - no changes needed here)
@@ -222,15 +227,13 @@ class MainWindow(QMainWindow):
         else: print("E: Dashboard widget not found post-build.")
 
         # *** Connect MessageManager signal ***
-        message_manager_widget = self.stack.widget(self.NAV_MAP["Messages"])
-        if isinstance(message_manager_widget, MessageManager):
-            print("Connecting MessageManager.counts_changed signal...")
-            message_manager_widget.counts_changed.connect(self._update_message_dashboard_count)
+        if hasattr(self, 'message_manager') and self.message_manager:
+            logger.info("Connecting MessageManager signal")
+            self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
             # *** Trigger initial count update ***
-            print("Triggering initial message count update...")
-            message_manager_widget._update_dashboard_counts()
+            self.message_manager._update_dashboard_counts()
         else:
-            print(f"W: Widget at index {self.NAV_MAP['Messages']} is not MessageManager. Cannot connect signal.")
+            logger.warning("MessageManager not found, cannot connect signal")
 
         # Setup refresh timer for dashboard (excluding messages card now)
         if isinstance(self.dashboard_widget, DashboardWidget):
@@ -323,16 +326,33 @@ class MainWindow(QMainWindow):
         # *** Ensure dashboard_widget is created HERE ***
         self.dashboard_widget = DashboardWidget(self.base_path, self.data_dir)
         self.stack.addWidget(self.dashboard_widget)
-        # Add other managers... ensure MessageManager is added at the correct index
-        self.stack.addWidget(LeadsManager())
-        self.stack.addWidget(SMTPManager())
+        
+        # Add managers using new integrated versions
+        logger.info("Initializing UI managers")
+        
+        # Leads Manager (Integrated)
+        self.leads_manager = IntegratedLeadsManager()
+        self.leads_manager.stats_updated.connect(self._update_leads_stats)
+        self.stack.addWidget(self.leads_manager)
+        
+        # SMTP Manager (Integrated)
+        self.smtp_manager = IntegratedSMTPManager()
+        self.smtp_manager.stats_updated.connect(self._update_smtp_stats)
+        self.stack.addWidget(self.smtp_manager)
+        
+        # Other managers (keeping existing for now)
         self.stack.addWidget(SubjectManager())
+        
         # Make sure MessageManager is at index NAV_MAP["Messages"] (which is 4)
-        self.stack.addWidget(MessageManager()) # <<< This needs to be the correct instance
+        self.message_manager = MessageManager()
+        self.stack.addWidget(self.message_manager) # <<< This needs to be the correct instance
+        
         self.stack.addWidget(AttachmentManager())
         self.stack.addWidget(ProxyManager())
         self.stack.addWidget(CampaignBuilder())
-        self.settings_panel = SettingsPanel(self.base_path, self.config, self.config_path); self.stack.addWidget(self.settings_panel)
+        
+        self.settings_panel = SettingsPanel(self.base_path, self.config, self.config_path)
+        self.stack.addWidget(self.settings_panel)
         splitter.addWidget(self.stack)
         splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 1); splitter.setSizes([250, 1350]); splitter.setHandleWidth(2)
         splitter.setStyleSheet("QSplitter::handle { background-color: #C0C4CC; } QSplitter::handle:hover { background-color: #A0A4AC; } QSplitter::handle:pressed { background-color: #8A8E96; }")
@@ -342,12 +362,29 @@ class MainWindow(QMainWindow):
     # *** ADDED: Slot to receive signal from MessageManager ***
     def _update_message_dashboard_count(self, list_count: int, message_folder_count: int):
         """Receives counts from MessageManager and updates the dashboard card."""
-        print(f"MainWindow received message counts: Lists={list_count}, Messages={message_folder_count}")
+        logger.debug("Received message counts", lists=list_count, messages=message_folder_count)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             # Call the new update method in DashboardWidget
             self.dashboard_widget.update_card_by_label("Messages", list_count, message_folder_count)
         else:
-            print("W: Dashboard widget not available to update message count.")
+            logger.warning("Dashboard widget not available to update message count")
+    
+    # *** ADDED: Slots for integrated managers ***
+    def _update_leads_stats(self, list_count: int, total_leads: int):
+        """Receives counts from IntegratedLeadsManager and updates the dashboard card."""
+        logger.debug("Received leads counts", lists=list_count, leads=total_leads)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Leads", list_count, total_leads)
+        else:
+            logger.warning("Dashboard widget not available to update leads count")
+    
+    def _update_smtp_stats(self, list_count: int, total_smtps: int):
+        """Receives counts from IntegratedSMTPManager and updates the dashboard card."""
+        logger.debug("Received SMTP counts", lists=list_count, smtps=total_smtps)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("SMTPs", list_count, total_smtps)
+        else:
+            logger.warning("Dashboard widget not available to update SMTP count")
 
     # (closeEvent remains the same)
     def closeEvent(self, event):

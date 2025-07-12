@@ -1,0 +1,9 @@
+# Core dependencies
+PyQt6>=6.4.0
+requests>=2.28.0
+openpyxl>=3.1.0
+matplotlib>=3.6.0
+cryptography>=41.0.0
+
+# Development dependencies
+typing-extensions>=4.5.0

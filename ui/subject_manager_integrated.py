@@ -285,8 +285,9 @@ class IntegratedSubjectManager(QWidget):
         top_layout = QHBoxLayout()
         
         # Left side - subject lists
-        left_layout = QVBoxLayout()
-        left_layout.setMaximumWidth(300)
+        left_widget = QWidget()
+        left_widget.setMaximumWidth(300)
+        left_layout = QVBoxLayout(left_widget)
         
         # Title
         title = QLabel("<b>Subject Lists</b>")
@@ -318,7 +319,7 @@ class IntegratedSubjectManager(QWidget):
         self.subject_list.customContextMenuRequested.connect(self.show_list_context_menu)
         left_layout.addWidget(self.subject_list)
         
-        top_layout.addLayout(left_layout, 1)
+        top_layout.addWidget(left_widget, 1)
         
         # Right side - subjects table
         right_layout = QVBoxLayout()

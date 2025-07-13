@@ -48,6 +48,7 @@ class IntegratedSMTPManager(QWidget):
         self.data_validator = DataValidator()
         self.smtp_configs: List[SMTPConfig] = []
         self.current_list_file = None
+        self.current_list_name = None
         
         # Worker for testing
         self.test_worker = None
@@ -178,23 +179,30 @@ class IntegratedSMTPManager(QWidget):
         layout.addLayout(bottom_layout)
     
     def load_smtp_files(self):
-        """Load available SMTP files."""
+        """Load available SMTP lists (folders and files)."""
         try:
             smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
             os.makedirs(smtp_dir, exist_ok=True)
             
             self.smtp_list.clear()
             
-            # Find Excel files
-            for filename in os.listdir(smtp_dir):
-                if filename.endswith(('.xlsx', '.xls')):
-                    self.smtp_list.addItem(filename)
+            # Find both folders (new structure) and Excel files (legacy)
+            for item in os.listdir(smtp_dir):
+                item_path = os.path.join(smtp_dir, item)
+                
+                if os.path.isdir(item_path):
+                    # New folder structure - add the folder name
+                    self.smtp_list.addItem(item)
+                elif item.endswith(('.xlsx', '.xls')):
+                    # Legacy file structure - add the filename without extension
+                    name = item.rsplit('.', 1)[0]
+                    self.smtp_list.addItem(name)
             
-            logger.info("SMTP files loaded", count=self.smtp_list.count())
+            logger.info("SMTP lists loaded", count=self.smtp_list.count())
             
         except Exception as e:
-            handle_exception(e, "Failed to load SMTP files")
-            QMessageBox.warning(self, "Error", f"Failed to load SMTP files: {e}")
+            handle_exception(e, "Failed to load SMTP lists")
+            QMessageBox.warning(self, "Error", f"Failed to load SMTP lists: {e}")
     
     def load_selected_list(self):
         """Load the selected SMTP list."""
@@ -202,12 +210,32 @@ class IntegratedSMTPManager(QWidget):
         if not current_item:
             return
         
-        filename = current_item.text()
+        list_name = current_item.text()
         smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
-        file_path = os.path.join(smtp_dir, filename)
         
-        if not os.path.exists(file_path):
-            QMessageBox.warning(self, "Error", f"File not found: {filename}")
+        # Check if it's a folder structure (new) or file structure (legacy)
+        folder_path = os.path.join(smtp_dir, list_name)
+        legacy_file_path = os.path.join(smtp_dir, f"{list_name}.xlsx")
+        
+        file_path = None
+        
+        if os.path.isdir(folder_path):
+            # New folder structure - look for the main data file
+            data_file = os.path.join(folder_path, f"{list_name}.xlsx")
+            if os.path.exists(data_file):
+                file_path = data_file
+                self.current_list_name = list_name
+            else:
+                # Create the data file if it doesn't exist
+                file_path = data_file
+                self.current_list_name = list_name
+        elif os.path.exists(legacy_file_path):
+            # Legacy file structure
+            file_path = legacy_file_path
+            self.current_list_name = list_name
+        
+        if not file_path:
+            QMessageBox.warning(self, "Error", f"Data file not found for list: {list_name}")
             return
         
         self.load_smtp_from_file(file_path)
@@ -353,27 +381,45 @@ class IntegratedSMTPManager(QWidget):
         logger.debug("SMTP table updated", rows=len(self.smtp_configs))
     
     def create_new_list(self):
-        """Create a new SMTP list."""
+        """Create a new SMTP list with proper folder structure."""
         name, ok = QInputDialog.getText(self, "New SMTP List", "Enter list name:")
         if not ok or not name.strip():
             return
         
+        # Clean the name (remove file extension if provided, and sanitize)
         name = name.strip()
-        if not name.endswith(('.xlsx', '.xls')):
-            name += '.xlsx'
+        if name.endswith(('.xlsx', '.xls')):
+            name = name.rsplit('.', 1)[0]  # Remove extension
+        
+        # Sanitize name for folder creation
+        import re
+        name = re.sub(r'[^\w\s-]', '', name).strip()
+        name = re.sub(r'[-\s]+', '_', name)
+        
+        if not name:
+            QMessageBox.warning(self, "Error", "Please enter a valid list name.")
+            return
         
         smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
-        os.makedirs(smtp_dir, exist_ok=True)  # Ensure directory exists
-        file_path = os.path.join(smtp_dir, name)
+        os.makedirs(smtp_dir, exist_ok=True)
         
-        if os.path.exists(file_path):
+        # Create folder for this list
+        list_folder = os.path.join(smtp_dir, name)
+        if os.path.exists(list_folder):
             QMessageBox.warning(self, "Error", "A list with this name already exists.")
             return
         
         try:
+            # Create list folder
+            os.makedirs(list_folder, exist_ok=True)
+            
+            # Create the data file inside the folder
+            file_path = os.path.join(list_folder, f"{name}.xlsx")
+            
             # Create empty SMTP list
             self.smtp_configs = []
             self.current_list_file = file_path
+            self.current_list_name = name
             
             # Save empty file
             self.save_current_list()
@@ -381,13 +427,14 @@ class IntegratedSMTPManager(QWidget):
             # Refresh file list
             self.load_smtp_files()
             
-            # Select the new file
+            # Select the new folder/list
             for i in range(self.smtp_list.count()):
                 if self.smtp_list.item(i).text() == name:
                     self.smtp_list.setCurrentRow(i)
                     break
             
-            logger.info("New SMTP list created", name=name)
+            logger.info("New SMTP list created with folder", name=name, folder=list_folder)
+            QMessageBox.information(self, "Success", f"SMTP list '{name}' created successfully!\nFolder: {list_folder}")
             
         except Exception as e:
             handle_exception(e, "Failed to create new SMTP list")

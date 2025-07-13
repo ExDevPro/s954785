@@ -383,8 +383,9 @@ class IntegratedAttachmentManager(QWidget):
         top_layout = QHBoxLayout()
         
         # Left side - attachment lists
-        left_layout = QVBoxLayout()
-        left_layout.setMaximumWidth(300)
+        left_widget = QWidget()
+        left_widget.setMaximumWidth(300)
+        left_layout = QVBoxLayout(left_widget)
         
         # Title
         title = QLabel("<b>Attachment Lists</b>")
@@ -416,7 +417,7 @@ class IntegratedAttachmentManager(QWidget):
         self.attachment_list.customContextMenuRequested.connect(self.show_list_context_menu)
         left_layout.addWidget(self.attachment_list)
         
-        top_layout.addLayout(left_layout, 1)
+        top_layout.addWidget(left_widget, 1)
         
         # Right side - attachments table
         right_layout = QVBoxLayout()

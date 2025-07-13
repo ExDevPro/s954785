@@ -451,6 +451,12 @@ class IntegratedCampaignBuilder(QWidget):
         self.proxies_combo.addItem("Select proxy list...")
         data_layout.addRow("Proxies:", self.proxies_combo)
         
+        # Refresh button for data
+        refresh_btn = QPushButton("🔄 Refresh Lists")
+        refresh_btn.clicked.connect(self.load_available_data)
+        refresh_btn.setToolTip("Refresh available lists from data folders")
+        data_layout.addRow("", refresh_btn)
+        
         layout.addWidget(data_group)
         
         # Settings section

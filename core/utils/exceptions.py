@@ -319,6 +319,13 @@ class DataFileError(DataError):
         )
 
 
+class FileError(DataFileError):
+    """Simple file error alias for UI compatibility."""
+    
+    def __init__(self, message: str, filepath: Optional[str] = None, **kwargs):
+        super().__init__(message, filepath, **kwargs)
+
+
 # Security related exceptions
 class SecurityError(BulkEmailSenderException):
     """Base class for security-related errors."""

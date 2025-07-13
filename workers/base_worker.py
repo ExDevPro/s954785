@@ -395,7 +395,7 @@ class BaseWorker:
                 self._end_time = time.time()
             
             self._set_status(WorkerStatus.FAILED)
-            self._logger.error(f"Worker '{self.name}' failed: {handled_error.message}")
+            self._logger.error(f"Worker '{self.name}' failed: {getattr(handled_error, 'message', str(handled_error))}")
             self._logger.exception(handled_error, f"in worker {self.name}")
             
             # Call completion callbacks

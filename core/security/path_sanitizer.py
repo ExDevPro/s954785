@@ -22,14 +22,10 @@ logger = get_module_logger(__name__)
 class PathSanitizer:
     """Handles path sanitization and validation."""
     
-    # Dangerous path patterns
+    # Dangerous path patterns (only for actual security threats)
     DANGEROUS_PATTERNS = [
-        r'\.\./',  # Directory traversal
-        r'\.\.\\',  # Directory traversal (Windows)
-        r'~/',     # Home directory reference
-        r'\\\\',   # UNC paths
-        r'://',    # Protocol prefixes
-        r'[<>"|?*]',  # Invalid filename characters
+        r'\.\.[/\\]',  # Directory traversal attempts
+        r'[<>"|?*]',   # Invalid filename characters  
         r'[\x00-\x1f\x7f-\x9f]',  # Control characters
     ]
     
@@ -290,21 +286,9 @@ def create_application_sanitizer() -> PathSanitizer:
     Returns:
         PathSanitizer instance with application-specific settings
     """
-    from core.utils.helpers import get_application_path
-    
-    app_path = get_application_path()
-    allowed_paths = [
-        app_path,
-        os.path.join(app_path, 'data'),
-        os.path.join(app_path, 'logs'),
-        os.path.join(app_path, 'assets'),
-        os.path.join(app_path, 'config'),
-        os.path.expanduser('~/Documents'),  # User documents folder
-        os.path.expanduser('~/Desktop'),    # User desktop folder
-        os.path.expanduser('~/Downloads'),  # User downloads folder
-    ]
-    
-    return PathSanitizer(allowed_paths)
+    # For imports and user file operations, we need to be more permissive
+    # Only basic security checks, no strict path restrictions for file imports
+    return PathSanitizer(allowed_base_paths=None)
 
 
 def sanitize_upload_filename(filename: str) -> str:
@@ -323,7 +307,7 @@ def sanitize_upload_filename(filename: str) -> str:
 
 def validate_attachment_path(path: str) -> str:
     """
-    Validate an attachment file path.
+    Validate an attachment file path - use permissive validation for user imports.
     
     Args:
         path: Attachment file path
@@ -334,7 +318,8 @@ def validate_attachment_path(path: str) -> str:
     Raises:
         ValidationError: If path is invalid
     """
-    sanitizer = create_application_sanitizer()
+    # For user file imports, use basic validation without strict path restrictions
+    sanitizer = PathSanitizer()  # No allowed_base_paths restriction
     return sanitizer.validate_file(path, must_exist=True, check_readable=True)
 
 

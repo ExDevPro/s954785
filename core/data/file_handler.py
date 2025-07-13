@@ -425,7 +425,7 @@ class FileHandler:
                 
                 except ValidationError as e:
                     row_num = row.get('_row_number', 'unknown')
-                    errors.append(f"Row {row_num}: {e.message}")
+                    errors.append(f"Row {row_num}: {getattr(e, 'message', str(e))}")
                 except Exception as e:
                     row_num = row.get('_row_number', 'unknown')
                     errors.append(f"Row {row_num}: {str(e)}")

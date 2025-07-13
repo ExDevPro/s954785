@@ -275,12 +275,12 @@ def safe_execute(logger: Logger, operation: str, default_return: Any = None):
             try:
                 return func(*args, **kwargs)
             except BulkEmailSenderException as e:
-                logger.error(f"Failed {operation}: {e.message}")
+                logger.error(f"Failed {operation}: {getattr(e, 'message', str(e))}")
                 logger.exception(e, operation)
                 return default_return
             except Exception as e:
                 handled_exception = handle_exception(e, {'operation': operation})
-                logger.error(f"Failed {operation}: {handled_exception.message}")
+                logger.error(f"Failed {operation}: {getattr(handled_exception, 'message', str(handled_exception))}")
                 logger.exception(handled_exception, operation)
                 return default_return
         

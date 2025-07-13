@@ -505,7 +505,7 @@ class DataValidator:
                 validated_lead = self.validate_lead_data(lead_data)
                 valid_leads.append(validated_lead)
             except ValidationError as e:
-                errors.append(f"Row {i+1}: {e.message}")
+                errors.append(f"Row {i+1}: {getattr(e, 'message', str(e))}")
         
         return valid_leads, errors
 

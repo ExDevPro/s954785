@@ -621,7 +621,7 @@ class IntegratedProxyManager(QWidget):
     def load_proxy_lists(self):
         """Load available proxy lists (folders and files)."""
         try:
-            proxies_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'proxies')
+            proxies_dir = get_data_directory('proxies')
             os.makedirs(proxies_dir, exist_ok=True)
             
             self.proxy_list.clear()
@@ -664,7 +664,7 @@ class IntegratedProxyManager(QWidget):
             QMessageBox.warning(self, "Error", "Please enter a valid list name.")
             return
         
-        proxies_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'proxies')
+        proxies_dir = get_data_directory('proxies')
         os.makedirs(proxies_dir, exist_ok=True)
         
         # Create folder for this list
@@ -711,7 +711,7 @@ class IntegratedProxyManager(QWidget):
             return
         
         list_name = current_item.text()
-        proxies_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'proxies')
+        proxies_dir = get_data_directory('proxies')
         
         # Check folder structure (new) or file structure (legacy)
         folder_path = os.path.join(proxies_dir, list_name)
@@ -1129,7 +1129,7 @@ class IntegratedProxyManager(QWidget):
         
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                proxies_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'proxies')
+                proxies_dir = get_data_directory('proxies')
                 
                 # Try folder structure first
                 folder_path = os.path.join(proxies_dir, list_name)

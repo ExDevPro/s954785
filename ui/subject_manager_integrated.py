@@ -377,7 +377,7 @@ class IntegratedSubjectManager(QWidget):
     def load_subject_lists(self):
         """Load available subject lists (folders and files)."""
         try:
-            subjects_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'subjects')
+            subjects_dir = get_data_directory('subjects')
             os.makedirs(subjects_dir, exist_ok=True)
             
             self.subject_list.clear()
@@ -420,7 +420,7 @@ class IntegratedSubjectManager(QWidget):
             QMessageBox.warning(self, "Error", "Please enter a valid list name.")
             return
         
-        subjects_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'subjects')
+        subjects_dir = get_data_directory('subjects')
         os.makedirs(subjects_dir, exist_ok=True)
         
         # Create folder for this list
@@ -467,7 +467,7 @@ class IntegratedSubjectManager(QWidget):
             return
         
         list_name = current_item.text()
-        subjects_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'subjects')
+        subjects_dir = get_data_directory('subjects')
         
         # Check folder structure (new) or file structure (legacy)
         folder_path = os.path.join(subjects_dir, list_name)
@@ -776,7 +776,7 @@ class IntegratedSubjectManager(QWidget):
         
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                subjects_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'subjects')
+                subjects_dir = get_data_directory('subjects')
                 
                 # Try folder structure first
                 folder_path = os.path.join(subjects_dir, list_name)

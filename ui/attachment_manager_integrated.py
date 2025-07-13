@@ -480,7 +480,7 @@ class IntegratedAttachmentManager(QWidget):
     def load_attachment_lists(self):
         """Load available attachment lists (folders and files)."""
         try:
-            attachments_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'attachments')
+            attachments_dir = get_data_directory('attachments')
             os.makedirs(attachments_dir, exist_ok=True)
             
             self.attachment_list.clear()
@@ -523,7 +523,7 @@ class IntegratedAttachmentManager(QWidget):
             QMessageBox.warning(self, "Error", "Please enter a valid list name.")
             return
         
-        attachments_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'attachments')
+        attachments_dir = get_data_directory('attachments')
         os.makedirs(attachments_dir, exist_ok=True)
         
         # Create folder for this list
@@ -571,7 +571,7 @@ class IntegratedAttachmentManager(QWidget):
             return
         
         list_name = current_item.text()
-        attachments_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'attachments')
+        attachments_dir = get_data_directory('attachments')
         
         # Check folder structure (new) or file structure (legacy)
         folder_path = os.path.join(attachments_dir, list_name)
@@ -873,7 +873,7 @@ class IntegratedAttachmentManager(QWidget):
         
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                attachments_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'attachments')
+                attachments_dir = get_data_directory('attachments')
                 
                 # Try folder structure first
                 folder_path = os.path.join(attachments_dir, list_name)

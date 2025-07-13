@@ -28,6 +28,7 @@ from core.data.file_handler import FileHandler
 from core.validation.data_validator import DataValidator
 from core.utils.logger import get_module_logger
 from core.utils.exceptions import handle_exception, ValidationError, FileError
+from core.utils.helpers import get_data_directory
 from workers.smtp_test_worker import SMTPTestWorker, SMTPTestResult
 
 logger = get_module_logger(__name__)
@@ -181,7 +182,7 @@ class IntegratedSMTPManager(QWidget):
     def load_smtp_files(self):
         """Load available SMTP lists (folders and files)."""
         try:
-            smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
+            smtp_dir = get_data_directory('smtps')
             os.makedirs(smtp_dir, exist_ok=True)
             
             self.smtp_list.clear()
@@ -211,7 +212,7 @@ class IntegratedSMTPManager(QWidget):
             return
         
         list_name = current_item.text()
-        smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
+        smtp_dir = get_data_directory('smtps')
         
         # Check if it's a folder structure (new) or file structure (legacy)
         folder_path = os.path.join(smtp_dir, list_name)
@@ -400,7 +401,7 @@ class IntegratedSMTPManager(QWidget):
             QMessageBox.warning(self, "Error", "Please enter a valid list name.")
             return
         
-        smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
+        smtp_dir = get_data_directory('smtps')
         os.makedirs(smtp_dir, exist_ok=True)
         
         # Create folder for this list
@@ -458,7 +459,7 @@ class IntegratedSMTPManager(QWidget):
         
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
+                smtp_dir = get_data_directory('smtps')
                 file_path = os.path.join(smtp_dir, filename)
                 
                 if os.path.exists(file_path):

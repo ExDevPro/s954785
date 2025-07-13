@@ -30,6 +30,7 @@ from core.validation.email_validator import EmailValidator
 from core.validation.data_validator import DataValidator
 from core.utils.logger import get_module_logger
 from core.utils.exceptions import handle_exception, ValidationError, FileError
+from core.utils.helpers import get_data_directory
 from workers.base_worker import BaseWorker, WorkerProgress, WorkerStatus
 
 logger = get_module_logger(__name__)
@@ -494,7 +495,7 @@ class IntegratedLeadsManager(QWidget):
     def load_leads_files(self):
         """Load available leads lists (folders and files)."""
         try:
-            leads_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'leads')
+            leads_dir = get_data_directory('leads')
             os.makedirs(leads_dir, exist_ok=True)
             
             self.leads_list.clear()
@@ -524,7 +525,7 @@ class IntegratedLeadsManager(QWidget):
             return
         
         list_name = current_item.text()
-        leads_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'leads')
+        leads_dir = get_data_directory('leads')
         
         # Check if it's a folder structure (new) or file structure (legacy)
         folder_path = os.path.join(leads_dir, list_name)
@@ -651,7 +652,7 @@ class IntegratedLeadsManager(QWidget):
             QMessageBox.warning(self, "Error", "Please enter a valid list name.")
             return
         
-        leads_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'leads')
+        leads_dir = get_data_directory('leads')
         os.makedirs(leads_dir, exist_ok=True)
         
         # Create folder for this list
@@ -709,7 +710,7 @@ class IntegratedLeadsManager(QWidget):
         
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                leads_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'leads')
+                leads_dir = get_data_directory('leads')
                 file_path = os.path.join(leads_dir, filename)
                 
                 if os.path.exists(file_path):

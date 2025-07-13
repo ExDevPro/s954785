@@ -41,6 +41,22 @@ def get_application_path() -> str:
         return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def get_data_directory(data_type: str) -> str:
+    """
+    Get the data directory for a specific data type.
+    
+    Args:
+        data_type: Type of data (leads, smtps, subjects, messages, attachments, proxies, campaigns)
+        
+    Returns:
+        Absolute path to the data directory
+    """
+    app_path = get_application_path()
+    data_dir = os.path.abspath(os.path.join(app_path, 'data', data_type))
+    ensure_directory(data_dir)
+    return data_dir
+
+
 def ensure_directory(path: str) -> str:
     """
     Ensure directory exists, create if necessary.

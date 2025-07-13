@@ -67,7 +67,13 @@ def test_foundation_functionality():
     
     try:
         # Import setup_logging
+        from config.settings import get_config
         from config.logging_config import setup_logging
+        from core.utils.logger import get_module_logger
+        from core.utils.helpers import generate_unique_id
+        from core.data.models import Lead
+        from core.data.file_handler import FileHandler
+        from core.validation.email_validator import EmailValidator
         
         # Setup logging
         setup_logging()
@@ -90,7 +96,7 @@ def test_foundation_functionality():
         
         # Validation
         email_validator = EmailValidator()
-        result = email_validator.validate_email("test@example.com")
+        result = email_validator.validate_single("test@example.com")
         assert result.is_valid
         print("  ✅ Email validation")
         

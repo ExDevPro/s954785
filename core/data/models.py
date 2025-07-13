@@ -30,6 +30,15 @@ class EmailStatus(Enum):
     CANCELLED = "cancelled"
 
 
+class LeadStatus(Enum):
+    """Lead general status enumeration."""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    OPTED_OUT = "opted_out"
+    BOUNCED = "bounced"
+    UNSUBSCRIBED = "unsubscribed"
+
+
 class CampaignStatus(Enum):
     """Campaign status enumeration."""
     DRAFT = "draft"
@@ -64,6 +73,7 @@ class Lead:
     id: str = field(default_factory=generate_unique_id)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
+    status: LeadStatus = LeadStatus.ACTIVE
     
     # Email status tracking
     email_status: EmailStatus = EmailStatus.PENDING
@@ -148,6 +158,7 @@ class Lead:
             'tags': self.tags,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
+            'status': self.status.value,
             'email_status': self.email_status.value,
             'last_email_sent': self.last_email_sent.isoformat() if self.last_email_sent else None,
             'send_attempts': self.send_attempts,
@@ -168,6 +179,8 @@ class Lead:
         # Handle enum fields
         if 'email_status' in data and isinstance(data['email_status'], str):
             data['email_status'] = EmailStatus(data['email_status'])
+        if 'status' in data and isinstance(data['status'], str):
+            data['status'] = LeadStatus(data['status'])
         
         return cls(**data)
 

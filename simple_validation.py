@@ -55,7 +55,7 @@ def main():
         for ui_file in ui_files:
             file_path = os.path.join(project_dir, ui_file)
             if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding='utf-8') as f:
                     ast.parse(f.read())  # Validate syntax
                 print(f"  ✅ {ui_file} - syntax valid")
             else:

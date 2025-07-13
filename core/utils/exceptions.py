@@ -120,6 +120,19 @@ class BulkEmailSenderException(Exception):
         return context
 
 
+# Application specific exceptions
+class ApplicationError(BulkEmailSenderException):
+    """General application errors."""
+    
+    def __init__(self, message: str, **kwargs):
+        super().__init__(
+            message,
+            error_code=ErrorCode.UNKNOWN_ERROR,
+            suggestion="Please check the application logs for more details",
+            **kwargs
+        )
+
+
 # Configuration related exceptions
 class ConfigurationError(BulkEmailSenderException):
     """Configuration-related errors."""

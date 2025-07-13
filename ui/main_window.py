@@ -341,7 +341,7 @@ class MainWindow(QMainWindow):
         self.nav.setObjectName("navigationList")
         self.nav.setMinimumWidth(200)
         self.nav.setMaximumWidth(350)
-        self.nav.setSizePolicy(QWidget.SizePolicy.Policy.Preferred, QWidget.SizePolicy.Policy.Expanding)
+        self.nav.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.nav.setIconSize(QSize(20, 20))
         # Navigation items with better organization
         self.nav_items_in_order = [
@@ -420,7 +420,7 @@ class MainWindow(QMainWindow):
         # Create content area with proper responsive design
         self.stack = QStackedWidget()
         self.stack.setObjectName("contentStack")
-        self.stack.setSizePolicy(QWidget.SizePolicy.Policy.Expanding, QWidget.SizePolicy.Policy.Expanding)
+        self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
         # Ensure dashboard widget is created
         self.dashboard_widget = DashboardWidget(self.base_path, self.data_dir)

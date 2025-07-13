@@ -21,8 +21,8 @@ from ui.smtp_manager_integrated import IntegratedSMTPManager
 from ui.message_manager_integrated import IntegratedMessageManager
 from ui.campaign_builder_integrated import IntegratedCampaignBuilder
 from ui.subject_manager_integrated import IntegratedSubjectManager
-from ui.attachment_manager import AttachmentManager
-from ui.proxy_manager      import ProxyManager
+from ui.attachment_manager_integrated import IntegratedAttachmentManager
+from ui.proxy_manager_integrated import IntegratedProxyManager
 from ui.settings_panel     import SettingsPanel
 
 # Import foundation components for logging
@@ -348,8 +348,15 @@ class MainWindow(QMainWindow):
         self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
         self.stack.addWidget(self.message_manager)
         
-        self.stack.addWidget(AttachmentManager())
-        self.stack.addWidget(ProxyManager())
+        # Attachment Manager (Integrated)
+        self.attachment_manager = IntegratedAttachmentManager()
+        self.attachment_manager.stats_updated.connect(self._update_attachment_stats)
+        self.stack.addWidget(self.attachment_manager)
+        
+        # Proxy Manager (Integrated)
+        self.proxy_manager = IntegratedProxyManager()
+        self.proxy_manager.stats_updated.connect(self._update_proxy_stats)
+        self.stack.addWidget(self.proxy_manager)
         
         # Campaign Builder (Integrated)
         self.campaign_builder = IntegratedCampaignBuilder()
@@ -397,6 +404,22 @@ class MainWindow(QMainWindow):
             self.dashboard_widget.update_card_by_label("Subjects", list_count, total_subjects)
         else:
             logger.warning("Dashboard widget not available to update subject count")
+    
+    def _update_attachment_stats(self, list_count: int, total_attachments: int):
+        """Receives counts from IntegratedAttachmentManager and updates the dashboard card."""
+        logger.debug("Received attachment counts", lists=list_count, attachments=total_attachments)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Attachments", list_count, total_attachments)
+        else:
+            logger.warning("Dashboard widget not available to update attachment count")
+    
+    def _update_proxy_stats(self, list_count: int, total_proxies: int):
+        """Receives counts from IntegratedProxyManager and updates the dashboard card."""
+        logger.debug("Received proxy counts", lists=list_count, proxies=total_proxies)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Proxies", list_count, total_proxies)
+        else:
+            logger.warning("Dashboard widget not available to update proxy count")
 
     # (closeEvent remains the same)
     def closeEvent(self, event):

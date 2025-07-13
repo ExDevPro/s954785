@@ -435,9 +435,21 @@ class IntegratedCampaignBuilder(QWidget):
         self.smtp_combo.addItem("Select SMTP config...")
         data_layout.addRow("SMTP:", self.smtp_combo)
         
+        self.subjects_combo = QComboBox()
+        self.subjects_combo.addItem("Select subject list...")
+        data_layout.addRow("Subjects:", self.subjects_combo)
+        
         self.template_combo = QComboBox()
         self.template_combo.addItem("Select email template...")
-        data_layout.addRow("Template:", self.template_combo)
+        data_layout.addRow("Messages:", self.template_combo)
+        
+        self.attachments_combo = QComboBox()
+        self.attachments_combo.addItem("Select attachment list...")
+        data_layout.addRow("Attachments:", self.attachments_combo)
+        
+        self.proxies_combo = QComboBox()
+        self.proxies_combo.addItem("Select proxy list...")
+        data_layout.addRow("Proxies:", self.proxies_combo)
         
         layout.addWidget(data_group)
         
@@ -531,27 +543,112 @@ class IntegratedCampaignBuilder(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to refresh campaign list: {e}")
     
     def load_available_data(self):
-        """Load available leads, SMTPs, and templates."""
+        """Load available leads, SMTPs, subjects, messages, attachments, and proxies."""
         try:
             base_path = os.path.dirname(os.path.dirname(__file__))
             data_dir = os.path.join(base_path, 'data')
             
-            # TODO: Load actual data from integrated managers
-            # For now, just populate with placeholder data
-            
+            # Load leads lists
             self.leads_combo.clear()
-            self.leads_combo.addItem("No leads lists available")
+            self.leads_combo.addItem("Select leads list...")
+            leads_dir = os.path.join(data_dir, 'leads')
+            if os.path.exists(leads_dir):
+                for item in os.listdir(leads_dir):
+                    item_path = os.path.join(leads_dir, item)
+                    if os.path.isdir(item_path):
+                        # New folder structure
+                        self.leads_combo.addItem(item)
+                    elif item.endswith(('.xlsx', '.xls')):
+                        # Legacy file structure
+                        name = item.rsplit('.', 1)[0]
+                        self.leads_combo.addItem(name)
             
+            # Load SMTP configs
             self.smtp_combo.clear()
-            self.smtp_combo.addItem("No SMTP configs available")
+            self.smtp_combo.addItem("Select SMTP config...")
+            smtp_dir = os.path.join(data_dir, 'smtps')
+            if os.path.exists(smtp_dir):
+                for item in os.listdir(smtp_dir):
+                    item_path = os.path.join(smtp_dir, item)
+                    if os.path.isdir(item_path):
+                        self.smtp_combo.addItem(item)
+                    elif item.endswith(('.json', '.xlsx', '.xls')):
+                        name = item.rsplit('.', 1)[0]
+                        self.smtp_combo.addItem(name)
             
+            # Load subject lists
+            self.subjects_combo.clear()
+            self.subjects_combo.addItem("Select subject list...")
+            subjects_dir = os.path.join(data_dir, 'subjects')
+            if os.path.exists(subjects_dir):
+                for item in os.listdir(subjects_dir):
+                    item_path = os.path.join(subjects_dir, item)
+                    if os.path.isdir(item_path):
+                        self.subjects_combo.addItem(item)
+                    elif item.endswith(('.json', '.xlsx', '.xls')):
+                        name = item.rsplit('.', 1)[0]
+                        self.subjects_combo.addItem(name)
+            
+            # Load message templates
             self.template_combo.clear()
-            self.template_combo.addItem("No email templates available")
+            self.template_combo.addItem("Select message template...")
+            messages_dir = os.path.join(data_dir, 'messages')
+            if os.path.exists(messages_dir):
+                for item in os.listdir(messages_dir):
+                    item_path = os.path.join(messages_dir, item)
+                    if os.path.isdir(item_path):
+                        self.template_combo.addItem(item)
+                    elif item.endswith(('.json', '.html', '.txt')):
+                        name = item.rsplit('.', 1)[0]
+                        self.template_combo.addItem(name)
             
-            logger.info("Available data loaded")
+            # Load attachment lists
+            self.attachments_combo.clear()
+            self.attachments_combo.addItem("Select attachment list...")
+            attachments_dir = os.path.join(data_dir, 'attachments')
+            if os.path.exists(attachments_dir):
+                for item in os.listdir(attachments_dir):
+                    item_path = os.path.join(attachments_dir, item)
+                    if os.path.isdir(item_path):
+                        self.attachments_combo.addItem(item)
+                    elif item.endswith('.json'):
+                        name = item.rsplit('.', 1)[0]
+                        self.attachments_combo.addItem(name)
+            
+            # Load proxy lists
+            self.proxies_combo.clear()
+            self.proxies_combo.addItem("Select proxy list...")
+            proxies_dir = os.path.join(data_dir, 'proxies')
+            if os.path.exists(proxies_dir):
+                for item in os.listdir(proxies_dir):
+                    item_path = os.path.join(proxies_dir, item)
+                    if os.path.isdir(item_path):
+                        self.proxies_combo.addItem(item)
+                    elif item.endswith('.json'):
+                        name = item.rsplit('.', 1)[0]
+                        self.proxies_combo.addItem(name)
+            
+            logger.info("Available data loaded", 
+                       leads=self.leads_combo.count()-1, 
+                       smtps=self.smtp_combo.count()-1, 
+                       subjects=self.subjects_combo.count()-1,
+                       templates=self.template_combo.count()-1,
+                       attachments=self.attachments_combo.count()-1,
+                       proxies=self.proxies_combo.count()-1)
             
         except Exception as e:
             handle_exception(e, "Failed to load available data")
+            # Set fallback values
+            for combo, label in [
+                (self.leads_combo, "Error loading leads lists"),
+                (self.smtp_combo, "Error loading SMTP configs"),
+                (self.subjects_combo, "Error loading subject lists"),
+                (self.template_combo, "Error loading templates"),
+                (self.attachments_combo, "Error loading attachment lists"),
+                (self.proxies_combo, "Error loading proxy lists")
+            ]:
+                combo.clear()
+                combo.addItem(label)
     
     def on_campaign_selected(self, current, previous):
         """Handle campaign selection."""

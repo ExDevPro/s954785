@@ -20,7 +20,7 @@ from ui.leads_manager_integrated import IntegratedLeadsManager
 from ui.smtp_manager_integrated import IntegratedSMTPManager
 from ui.message_manager_integrated import IntegratedMessageManager
 from ui.campaign_builder_integrated import IntegratedCampaignBuilder
-from ui.subject_manager    import SubjectManager
+from ui.subject_manager_integrated import IntegratedSubjectManager
 from ui.attachment_manager import AttachmentManager
 from ui.proxy_manager      import ProxyManager
 from ui.settings_panel     import SettingsPanel
@@ -339,7 +339,9 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.smtp_manager)
         
         # Other managers (keeping existing for now)
-        self.stack.addWidget(SubjectManager())
+        self.subject_manager = IntegratedSubjectManager()
+        self.subject_manager.stats_updated.connect(self._update_subject_stats)
+        self.stack.addWidget(self.subject_manager)
         
         # Message Manager (Integrated)
         self.message_manager = IntegratedMessageManager()
@@ -387,6 +389,14 @@ class MainWindow(QMainWindow):
             self.dashboard_widget.update_card_by_label("SMTPs", list_count, total_smtps)
         else:
             logger.warning("Dashboard widget not available to update SMTP count")
+    
+    def _update_subject_stats(self, list_count: int, total_subjects: int):
+        """Receives counts from IntegratedSubjectManager and updates the dashboard card."""
+        logger.debug("Received subject counts", lists=list_count, subjects=total_subjects)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Subjects", list_count, total_subjects)
+        else:
+            logger.warning("Dashboard widget not available to update subject count")
 
     # (closeEvent remains the same)
     def closeEvent(self, event):

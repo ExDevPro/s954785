@@ -342,7 +342,7 @@ class MainWindow(QMainWindow):
         self.subject_manager = SubjectManager()
         # Check if it has signals before connecting
         if hasattr(self.subject_manager, 'counts_changed'):
-            self.subject_manager.counts_changed.connect(self._update_subject_dashboard_count)
+            self.subject_manager.counts_changed.connect(self._update_subject_stats)
         self.stack.addWidget(self.subject_manager)
         
         # Message Manager (Original)
@@ -356,7 +356,7 @@ class MainWindow(QMainWindow):
         self.attachment_manager = AttachmentManager()
         # Check if it has signals before connecting
         if hasattr(self.attachment_manager, 'counts_changed'):
-            self.attachment_manager.counts_changed.connect(self._update_attachment_dashboard_count)
+            self.attachment_manager.counts_changed.connect(self._update_attachment_stats)
         self.stack.addWidget(self.attachment_manager)
         
         # Proxy Manager (Original)

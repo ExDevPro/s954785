@@ -15,14 +15,36 @@ from PyQt6.QtGui import QIcon, QFont, QPalette, QPixmap, QCursor, QMovie
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-# Import UI Managers - using original stable versions
-from ui.leads_manager import LeadsManager
-from ui.smtp_manager import SMTPManager
+# Import UI Managers - using improved threaded versions with fallback
+def import_managers():
+    """Import managers with fallback to original versions"""
+    try:
+        # Try importing improved versions
+        from ui.leads_manager_improved import LeadsManagerImproved as LeadsManager
+        from ui.smtp_manager_improved import SMTPManagerImproved as SMTPManager  
+        from ui.proxy_manager_improved import ProxyManagerImproved as ProxyManager
+        from ui.subject_manager_improved import SubjectManagerImproved as SubjectManager
+        print("✅ Using improved threaded managers")
+        return LeadsManager, SMTPManager, ProxyManager, SubjectManager, True
+    except Exception as e:
+        print(f"⚠️ Fallback to original managers: {e}")
+        try:
+            from ui.leads_manager import LeadsManager
+            from ui.smtp_manager import SMTPManager
+            from ui.proxy_manager import ProxyManager
+            from ui.subject_manager import SubjectManager
+            return LeadsManager, SMTPManager, ProxyManager, SubjectManager, False
+        except Exception as e2:
+            print(f"❌ Error importing original managers: {e2}")
+            raise e2
+
+# Import managers
+LeadsManager, SMTPManager, ProxyManager, SubjectManager, using_improved = import_managers()
+
+# These remain unchanged for now
 from ui.message_manager import MessageManager
 from ui.campaign_builder import CampaignBuilder
-from ui.subject_manager import SubjectManager
 from ui.attachment_manager import AttachmentManager
-from ui.proxy_manager import ProxyManager
 from ui.settings_panel import SettingsPanel
 
 # Import foundation components for logging
@@ -325,43 +347,43 @@ class MainWindow(QMainWindow):
         self.dashboard_widget = DashboardWidget(self.base_path, self.data_dir)
         self.stack.addWidget(self.dashboard_widget)
         
-        # Add managers using new integrated versions
+        # Add managers using improved threaded versions
         logger.info("Initializing UI managers")
         
-        # Leads Manager (Original)
+        # Leads Manager (Improved with threading)
         self.leads_manager = LeadsManager()
-        # Original doesn't have stats_updated signal, skip for now
+        if hasattr(self.leads_manager, 'counts_changed'):
+            self.leads_manager.counts_changed.connect(self._update_leads_stats)
         self.stack.addWidget(self.leads_manager)
         
-        # SMTP Manager (Original)
+        # SMTP Manager (Improved with threading)
         self.smtp_manager = SMTPManager()
-        # Original doesn't have stats_updated signal, skip for now
+        if hasattr(self.smtp_manager, 'counts_changed'):
+            self.smtp_manager.counts_changed.connect(self._update_smtp_stats)
         self.stack.addWidget(self.smtp_manager)
         
-        # Subject Manager (Original)
+        # Subject Manager (Improved with threading)
         self.subject_manager = SubjectManager()
-        # Check if it has signals before connecting
         if hasattr(self.subject_manager, 'counts_changed'):
             self.subject_manager.counts_changed.connect(self._update_subject_stats)
         self.stack.addWidget(self.subject_manager)
         
-        # Message Manager (Original)
+        # Message Manager (Original - will be improved later)
         self.message_manager = MessageManager()
-        # Check if it has signals before connecting
         if hasattr(self.message_manager, 'counts_changed'):
             self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
         self.stack.addWidget(self.message_manager)
         
-        # Attachment Manager (Original)
+        # Attachment Manager (Original - will be improved later)
         self.attachment_manager = AttachmentManager()
-        # Check if it has signals before connecting
         if hasattr(self.attachment_manager, 'counts_changed'):
             self.attachment_manager.counts_changed.connect(self._update_attachment_stats)
         self.stack.addWidget(self.attachment_manager)
         
-        # Proxy Manager (Original)
+        # Proxy Manager (Improved with threading)
         self.proxy_manager = ProxyManager()
-        # Original doesn't have stats_updated signal, skip for now
+        if hasattr(self.proxy_manager, 'counts_changed'):
+            self.proxy_manager.counts_changed.connect(self._update_proxy_stats)
         self.stack.addWidget(self.proxy_manager)
         
         # Campaign Builder (Original)

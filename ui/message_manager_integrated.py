@@ -49,7 +49,7 @@ class MessageWorker(BaseWorker):
     folder_created = pyqtSignal(str)  # folder path
     
     def __init__(self):
-        super().__init__()
+        super().__init__(name="message_worker")
         self.file_handler = FileHandler()
         self.data_validator = DataValidator()
         
@@ -487,6 +487,7 @@ class IntegratedMessageManager(QWidget):
         
         # Auto-resize columns
         header = self.message_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)  # Allow manual resizing
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Name
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # Subject
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Variables

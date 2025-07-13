@@ -46,7 +46,7 @@ class CampaignWorker(BaseWorker):
     campaign_completed = pyqtSignal(object, dict)  # campaign, results
     
     def __init__(self):
-        super().__init__()
+        super().__init__(name="campaign_worker")
         self.file_handler = FileHandler()
         self.data_validator = DataValidator()
         

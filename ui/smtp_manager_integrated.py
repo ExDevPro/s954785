@@ -363,6 +363,7 @@ class IntegratedSMTPManager(QWidget):
             name += '.xlsx'
         
         smtp_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'smtps')
+        os.makedirs(smtp_dir, exist_ok=True)  # Ensure directory exists
         file_path = os.path.join(smtp_dir, name)
         
         if os.path.exists(file_path):
@@ -531,7 +532,7 @@ class IntegratedSMTPManager(QWidget):
                 data.append(row)
             
             # Save using file handler
-            self.file_handler.save_excel(file_path, data)
+            self.file_handler.save_excel_tabular(data, file_path)
             
         except Exception as e:
             raise FileError(f"Failed to save SMTP configs: {e}")

@@ -585,6 +585,62 @@ class FileHandler:
             logger.error("Failed to save Excel file", filepath=filepath, error=str(e))
             return False
 
+    def save_excel_tabular(self, data: List[List[Any]], filepath: str, sheet_name: str = "Sheet1") -> bool:
+        """
+        Save tabular data (list of lists) to Excel file.
+        
+        Args:
+            data: List of lists (first row should be headers)
+            filepath: Path to save Excel file
+            sheet_name: Name of the Excel sheet
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            if not data:
+                logger.warning("No data to save", filepath=filepath)
+                return False
+            
+            # Ensure directory exists
+            ensure_directory(os.path.dirname(filepath))
+            
+            # Create workbook and worksheet
+            workbook = openpyxl.Workbook()
+            worksheet = workbook.active
+            worksheet.title = sheet_name
+            
+            # Write data row by row
+            for row_num, row_data in enumerate(data, start=1):
+                for col_num, cell_value in enumerate(row_data, start=1):
+                    worksheet.cell(row=row_num, column=col_num, value=cell_value)
+            
+            # Auto-adjust column widths
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = get_column_letter(column[0].column)
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+            
+            # Save the file
+            workbook.save(filepath)
+            workbook.close()
+            
+            logger.info("Excel tabular file saved successfully", filepath=filepath, rows=len(data))
+            return True
+            
+        except Exception as e:
+            logger.error("Failed to save Excel tabular file", filepath=filepath, error=str(e))
+            return False
+
 
 # Convenience functions
 def import_leads_from_csv(filepath: str, email_column: str = 'email') -> List[Dict[str, Any]]:

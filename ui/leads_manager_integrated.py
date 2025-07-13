@@ -44,7 +44,7 @@ class LeadsWorker(BaseWorker):
     validation_completed = pyqtSignal(dict)  # validation results
     
     def __init__(self):
-        super().__init__()
+        super().__init__(name="leads_worker")
         self.file_handler = FileHandler()
         self.email_validator = EmailValidator()
         self.data_validator = DataValidator()
@@ -586,6 +586,7 @@ class IntegratedLeadsManager(QWidget):
             name += '.xlsx'
         
         leads_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'leads')
+        os.makedirs(leads_dir, exist_ok=True)  # Ensure directory exists
         file_path = os.path.join(leads_dir, name)
         
         if os.path.exists(file_path):

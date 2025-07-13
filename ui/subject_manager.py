@@ -185,7 +185,7 @@ class SubjectManager(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(1)
         self.table.setHorizontalHeaderLabels(["Subject"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked | QAbstractItemView.EditTrigger.SelectedClicked | QAbstractItemView.EditTrigger.AnyKeyPressed)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)

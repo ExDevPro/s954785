@@ -24,8 +24,10 @@ def import_managers():
         from ui.smtp_manager_improved import SMTPManagerImproved as SMTPManager  
         from ui.proxy_manager_improved import ProxyManagerImproved as ProxyManager
         from ui.subject_manager_improved import SubjectManagerImproved as SubjectManager
+        from ui.message_manager_improved import MessageManagerImproved as MessageManager
+        from ui.attachment_manager_improved import AttachmentManagerImproved as AttachmentManager
         print("✅ Using improved threaded managers")
-        return LeadsManager, SMTPManager, ProxyManager, SubjectManager, True
+        return LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, True
     except Exception as e:
         print(f"⚠️ Fallback to original managers: {e}")
         try:
@@ -33,18 +35,18 @@ def import_managers():
             from ui.smtp_manager import SMTPManager
             from ui.proxy_manager import ProxyManager
             from ui.subject_manager import SubjectManager
-            return LeadsManager, SMTPManager, ProxyManager, SubjectManager, False
+            from ui.message_manager import MessageManager
+            from ui.attachment_manager import AttachmentManager
+            return LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, False
         except Exception as e2:
             print(f"❌ Error importing original managers: {e2}")
             raise e2
 
 # Import managers
-LeadsManager, SMTPManager, ProxyManager, SubjectManager, using_improved = import_managers()
+LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, using_improved = import_managers()
 
 # These remain unchanged for now
-from ui.message_manager import MessageManager
 from ui.campaign_builder import CampaignBuilder
-from ui.attachment_manager import AttachmentManager
 from ui.settings_panel import SettingsPanel
 
 # Import foundation components for logging
@@ -368,13 +370,13 @@ class MainWindow(QMainWindow):
             self.subject_manager.counts_changed.connect(self._update_subject_stats)
         self.stack.addWidget(self.subject_manager)
         
-        # Message Manager (Original - will be improved later)
+        # Message Manager (Improved with threading)
         self.message_manager = MessageManager()
         if hasattr(self.message_manager, 'counts_changed'):
             self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
         self.stack.addWidget(self.message_manager)
         
-        # Attachment Manager (Original - will be improved later)
+        # Attachment Manager (Improved with threading)
         self.attachment_manager = AttachmentManager()
         if hasattr(self.attachment_manager, 'counts_changed'):
             self.attachment_manager.counts_changed.connect(self._update_attachment_stats)
@@ -399,12 +401,12 @@ class MainWindow(QMainWindow):
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex); self.nav.setCurrentRow(0)
 
     # *** ADDED: Slot to receive signal from MessageManager ***
-    def _update_message_dashboard_count(self, list_count: int, message_folder_count: int):
+    def _update_message_dashboard_count(self, list_count: int, total_messages: int):
         """Receives counts from MessageManager and updates the dashboard card."""
-        logger.debug("Received message counts", lists=list_count, messages=message_folder_count)
+        logger.debug("Received message counts", lists=list_count, messages=total_messages)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             # Call the new update method in DashboardWidget
-            self.dashboard_widget.update_card_by_label("Messages", list_count, message_folder_count)
+            self.dashboard_widget.update_card_by_label("Messages", list_count, total_messages)
         else:
             logger.warning("Dashboard widget not available to update message count")
     

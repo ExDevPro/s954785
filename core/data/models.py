@@ -56,6 +56,14 @@ class SMTPSecurityType(Enum):
     SSL = "ssl"
 
 
+class SMTPStatus(Enum):
+    """SMTP connection status enumeration."""
+    UNTESTED = "untested"
+    TESTING = "testing"
+    WORKING = "working"
+    FAILED = "failed"
+
+
 @dataclass
 class Lead:
     """Lead data structure."""
@@ -207,6 +215,7 @@ class SMTPConfig:
     last_tested: Optional[datetime] = None
     is_verified: bool = False
     last_error: Optional[str] = None
+    status: SMTPStatus = SMTPStatus.UNTESTED
     
     # Rate limiting
     max_emails_per_hour: Optional[int] = None
@@ -254,6 +263,7 @@ class SMTPConfig:
             'last_tested': self.last_tested.isoformat() if self.last_tested else None,
             'is_verified': self.is_verified,
             'last_error': self.last_error,
+            'status': self.status.value,
             'max_emails_per_hour': self.max_emails_per_hour,
             'max_emails_per_day': self.max_emails_per_day,
             'delay_between_emails': self.delay_between_emails
@@ -278,6 +288,8 @@ class SMTPConfig:
         # Handle enum fields
         if 'security_type' in data and isinstance(data['security_type'], str):
             data['security_type'] = SMTPSecurityType(data['security_type'])
+        if 'status' in data and isinstance(data['status'], str):
+            data['status'] = SMTPStatus(data['status'])
         
         return cls(**data)
 

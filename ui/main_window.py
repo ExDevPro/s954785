@@ -15,15 +15,15 @@ from PyQt6.QtGui import QIcon, QFont, QPalette, QPixmap, QCursor, QMovie
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-# Import UI Managers - using new integrated versions where available
-from ui.leads_manager_integrated import IntegratedLeadsManager
-from ui.smtp_manager_integrated import IntegratedSMTPManager
-from ui.message_manager_integrated import IntegratedMessageManager
-from ui.campaign_builder_integrated import IntegratedCampaignBuilder
-from ui.subject_manager_integrated import IntegratedSubjectManager
-from ui.attachment_manager_integrated import IntegratedAttachmentManager
-from ui.proxy_manager_integrated import IntegratedProxyManager
-from ui.settings_panel     import SettingsPanel
+# Import UI Managers - using original stable versions
+from ui.leads_manager import LeadsManager
+from ui.smtp_manager import SMTPManager
+from ui.message_manager import MessageManager
+from ui.campaign_builder import CampaignBuilder
+from ui.subject_manager import SubjectManager
+from ui.attachment_manager import AttachmentManager
+from ui.proxy_manager import ProxyManager
+from ui.settings_panel import SettingsPanel
 
 # Import foundation components for logging
 from core.utils.logger import get_module_logger
@@ -226,10 +226,10 @@ class MainWindow(QMainWindow):
              self.dashboard_widget.refreshFinished.connect(self._hide_loading_indicator)
         else: print("E: Dashboard widget not found post-build.")
 
-        # *** Connect integrated manager signals ***
+        # *** Connect manager signals if available ***
         if hasattr(self, 'message_manager') and self.message_manager:
-            logger.info("Connecting IntegratedMessageManager signal")
-            # Signal is already connected above during widget creation
+            logger.info("Connecting MessageManager signal if available")
+            # Signal is already connected above during widget creation if available
         else:
             logger.warning("MessageManager not found, cannot connect signal")
 
@@ -328,38 +328,44 @@ class MainWindow(QMainWindow):
         # Add managers using new integrated versions
         logger.info("Initializing UI managers")
         
-        # Leads Manager (Integrated)
-        self.leads_manager = IntegratedLeadsManager()
-        self.leads_manager.stats_updated.connect(self._update_leads_stats)
+        # Leads Manager (Original)
+        self.leads_manager = LeadsManager()
+        # Original doesn't have stats_updated signal, skip for now
         self.stack.addWidget(self.leads_manager)
         
-        # SMTP Manager (Integrated)
-        self.smtp_manager = IntegratedSMTPManager()
-        self.smtp_manager.stats_updated.connect(self._update_smtp_stats)
+        # SMTP Manager (Original)
+        self.smtp_manager = SMTPManager()
+        # Original doesn't have stats_updated signal, skip for now
         self.stack.addWidget(self.smtp_manager)
         
-        # Other managers (keeping existing for now)
-        self.subject_manager = IntegratedSubjectManager()
-        self.subject_manager.stats_updated.connect(self._update_subject_stats)
+        # Subject Manager (Original)
+        self.subject_manager = SubjectManager()
+        # Check if it has signals before connecting
+        if hasattr(self.subject_manager, 'counts_changed'):
+            self.subject_manager.counts_changed.connect(self._update_subject_dashboard_count)
         self.stack.addWidget(self.subject_manager)
         
-        # Message Manager (Integrated)
-        self.message_manager = IntegratedMessageManager()
-        self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
+        # Message Manager (Original)
+        self.message_manager = MessageManager()
+        # Check if it has signals before connecting
+        if hasattr(self.message_manager, 'counts_changed'):
+            self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
         self.stack.addWidget(self.message_manager)
         
-        # Attachment Manager (Integrated)
-        self.attachment_manager = IntegratedAttachmentManager()
-        self.attachment_manager.stats_updated.connect(self._update_attachment_stats)
+        # Attachment Manager (Original)
+        self.attachment_manager = AttachmentManager()
+        # Check if it has signals before connecting
+        if hasattr(self.attachment_manager, 'counts_changed'):
+            self.attachment_manager.counts_changed.connect(self._update_attachment_dashboard_count)
         self.stack.addWidget(self.attachment_manager)
         
-        # Proxy Manager (Integrated)
-        self.proxy_manager = IntegratedProxyManager()
-        self.proxy_manager.stats_updated.connect(self._update_proxy_stats)
+        # Proxy Manager (Original)
+        self.proxy_manager = ProxyManager()
+        # Original doesn't have stats_updated signal, skip for now
         self.stack.addWidget(self.proxy_manager)
         
-        # Campaign Builder (Integrated)
-        self.campaign_builder = IntegratedCampaignBuilder()
+        # Campaign Builder (Original)
+        self.campaign_builder = CampaignBuilder()
         self.stack.addWidget(self.campaign_builder)
         
         self.settings_panel = SettingsPanel(self.base_path, self.config, self.config_path)
@@ -380,9 +386,9 @@ class MainWindow(QMainWindow):
         else:
             logger.warning("Dashboard widget not available to update message count")
     
-    # *** ADDED: Slots for integrated managers ***
+    # *** ADDED: Slots for manager stats (some managers may not have these signals) ***
     def _update_leads_stats(self, list_count: int, total_leads: int):
-        """Receives counts from IntegratedLeadsManager and updates the dashboard card."""
+        """Receives counts from LeadsManager and updates the dashboard card."""
         logger.debug("Received leads counts", lists=list_count, leads=total_leads)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             self.dashboard_widget.update_card_by_label("Leads", list_count, total_leads)
@@ -390,7 +396,7 @@ class MainWindow(QMainWindow):
             logger.warning("Dashboard widget not available to update leads count")
     
     def _update_smtp_stats(self, list_count: int, total_smtps: int):
-        """Receives counts from IntegratedSMTPManager and updates the dashboard card."""
+        """Receives counts from SMTPManager and updates the dashboard card."""
         logger.debug("Received SMTP counts", lists=list_count, smtps=total_smtps)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             self.dashboard_widget.update_card_by_label("SMTPs", list_count, total_smtps)
@@ -398,7 +404,7 @@ class MainWindow(QMainWindow):
             logger.warning("Dashboard widget not available to update SMTP count")
     
     def _update_subject_stats(self, list_count: int, total_subjects: int):
-        """Receives counts from IntegratedSubjectManager and updates the dashboard card."""
+        """Receives counts from SubjectManager and updates the dashboard card."""
         logger.debug("Received subject counts", lists=list_count, subjects=total_subjects)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             self.dashboard_widget.update_card_by_label("Subjects", list_count, total_subjects)
@@ -406,7 +412,7 @@ class MainWindow(QMainWindow):
             logger.warning("Dashboard widget not available to update subject count")
     
     def _update_attachment_stats(self, list_count: int, total_attachments: int):
-        """Receives counts from IntegratedAttachmentManager and updates the dashboard card."""
+        """Receives counts from AttachmentManager and updates the dashboard card."""
         logger.debug("Received attachment counts", lists=list_count, attachments=total_attachments)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             self.dashboard_widget.update_card_by_label("Attachments", list_count, total_attachments)
@@ -414,7 +420,7 @@ class MainWindow(QMainWindow):
             logger.warning("Dashboard widget not available to update attachment count")
     
     def _update_proxy_stats(self, list_count: int, total_proxies: int):
-        """Receives counts from IntegratedProxyManager and updates the dashboard card."""
+        """Receives counts from ProxyManager and updates the dashboard card."""
         logger.debug("Received proxy counts", lists=list_count, proxies=total_proxies)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             self.dashboard_widget.update_card_by_label("Proxies", list_count, total_proxies)

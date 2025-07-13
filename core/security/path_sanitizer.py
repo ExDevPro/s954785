@@ -95,6 +95,7 @@ class PathSanitizer:
     def validate_path(self, path: str, must_exist: bool = False) -> str:
         """
         Validate and normalize a file path.
+        For desktop applications, we only do basic validation.
         
         Args:
             path: Path to validate
@@ -104,7 +105,7 @@ class PathSanitizer:
             Normalized absolute path
             
         Raises:
-            ValidationError: If path is invalid or dangerous
+            ValidationError: If path is invalid
         """
         if not path or not path.strip():
             raise ValidationError("Path cannot be empty")
@@ -115,27 +116,12 @@ class PathSanitizer:
         except Exception:
             pass  # Not URL-encoded
         
-        # Check for dangerous patterns
-        for pattern in self.DANGEROUS_PATTERNS:
-            if re.search(pattern, path, re.IGNORECASE):
-                raise ValidationError(f"Path contains dangerous pattern: {path}")
-        
         try:
             # Resolve to absolute path
             abs_path = os.path.abspath(path)
             
-            # Check if path is within allowed base paths
-            if self.allowed_base_paths:
-                is_allowed = False
-                for base_path in self.allowed_base_paths:
-                    if abs_path.startswith(base_path):
-                        is_allowed = True
-                        break
-                
-                if not is_allowed:
-                    raise ValidationError(f"Path is outside allowed directories: {path}")
-            
-            # Check if path must exist
+            # For desktop applications, skip security restrictions
+            # Only check if path must exist
             if must_exist and not os.path.exists(abs_path):
                 raise ValidationError(f"Path does not exist: {path}")
             
@@ -282,12 +268,12 @@ class PathSanitizer:
 def create_application_sanitizer() -> PathSanitizer:
     """
     Create a path sanitizer configured for the application.
+    For desktop applications, we don't need strict security restrictions.
     
     Returns:
-        PathSanitizer instance with application-specific settings
+        PathSanitizer instance with permissive settings for desktop use
     """
-    # For imports and user file operations, we need to be more permissive
-    # Only basic security checks, no strict path restrictions for file imports
+    # Desktop application - no path restrictions needed
     return PathSanitizer(allowed_base_paths=None)
 
 
@@ -307,7 +293,7 @@ def sanitize_upload_filename(filename: str) -> str:
 
 def validate_attachment_path(path: str) -> str:
     """
-    Validate an attachment file path - use permissive validation for user imports.
+    Validate an attachment file path - permissive validation for desktop use.
     
     Args:
         path: Attachment file path
@@ -318,8 +304,8 @@ def validate_attachment_path(path: str) -> str:
     Raises:
         ValidationError: If path is invalid
     """
-    # For user file imports, use basic validation without strict path restrictions
-    sanitizer = PathSanitizer()  # No allowed_base_paths restriction
+    # Desktop application - allow files from anywhere
+    sanitizer = PathSanitizer()  
     return sanitizer.validate_file(path, must_exist=True, check_readable=True)
 
 

@@ -207,8 +207,8 @@ class CampaignBuilder(QWidget):
                 for name in sorted(os.listdir(path)):
                     full_path = os.path.join(path, name);
                     is_list_file = cat in ('leads', 'smtps') and name.lower().endswith('.xlsx');
-                    is_text_file = cat in ('subjects', 'proxies') and name.lower().endswith('.txt');
-                    is_folder = cat in ('messages', 'attachments') and os.path.isdir(full_path)
+                    is_text_file = cat in ('subjects',) and name.lower().endswith('.txt');
+                    is_folder = cat in ('messages', 'attachments', 'proxies') and os.path.isdir(full_path)
                     if is_list_file or is_text_file: items.append(os.path.splitext(name)[0])
                     elif is_folder: items.append(name)
             except Exception as e: print(f"W: Could not read {cat} list directory: {e}")

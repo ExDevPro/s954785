@@ -1,2 +1,6 @@
 [2025-07-13T01:28:05.054539] Test context for logging: ValueError: Test error for logging
 --------------------------------------------------------------------------------
+[2025-07-13T01:31:10.053178] Theme switching test: ValueError: Test theme error
+Traceback:   File "<string>", line 13, in <module>
+
+--------------------------------------------------------------------------------

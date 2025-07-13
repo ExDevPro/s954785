@@ -31,6 +31,7 @@ from core.data.file_handler import FileHandler
 from core.validation.data_validator import DataValidator
 from core.utils.logger import get_module_logger
 from core.utils.exceptions import handle_exception, ValidationError, FileError
+from core.utils.helpers import get_data_directory
 from workers.base_worker import BaseWorker, WorkerProgress, WorkerStatus
 from core.engine.smtp_client import EmailSender
 
@@ -305,9 +306,7 @@ class IntegratedCampaignBuilder(QWidget):
         self.data_validator = DataValidator()
         
         # Setup paths
-        base_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-        self.campaigns_dir = os.path.join(base_path, 'data', 'campaigns')
-        os.makedirs(self.campaigns_dir, exist_ok=True)
+        self.campaigns_dir = get_data_directory('campaigns')
         
         # Current state
         self.current_campaign: Optional[Campaign] = None
@@ -551,88 +550,79 @@ class IntegratedCampaignBuilder(QWidget):
     def load_available_data(self):
         """Load available leads, SMTPs, subjects, messages, attachments, and proxies."""
         try:
-            base_path = os.path.dirname(os.path.dirname(__file__))
-            data_dir = os.path.join(base_path, 'data')
-            
             # Load leads lists
             self.leads_combo.clear()
             self.leads_combo.addItem("Select leads list...")
-            leads_dir = os.path.join(data_dir, 'leads')
-            if os.path.exists(leads_dir):
-                for item in os.listdir(leads_dir):
-                    item_path = os.path.join(leads_dir, item)
-                    if os.path.isdir(item_path):
-                        # New folder structure
-                        self.leads_combo.addItem(item)
-                    elif item.endswith(('.xlsx', '.xls')):
-                        # Legacy file structure
-                        name = item.rsplit('.', 1)[0]
-                        self.leads_combo.addItem(name)
+            leads_dir = get_data_directory('leads')
+            for item in os.listdir(leads_dir):
+                item_path = os.path.join(leads_dir, item)
+                if os.path.isdir(item_path):
+                    # New folder structure
+                    self.leads_combo.addItem(item)
+                elif item.endswith(('.xlsx', '.xls')):
+                    # Legacy file structure
+                    name = item.rsplit('.', 1)[0]
+                    self.leads_combo.addItem(name)
             
             # Load SMTP configs
             self.smtp_combo.clear()
             self.smtp_combo.addItem("Select SMTP config...")
-            smtp_dir = os.path.join(data_dir, 'smtps')
-            if os.path.exists(smtp_dir):
-                for item in os.listdir(smtp_dir):
-                    item_path = os.path.join(smtp_dir, item)
-                    if os.path.isdir(item_path):
-                        self.smtp_combo.addItem(item)
-                    elif item.endswith(('.json', '.xlsx', '.xls')):
-                        name = item.rsplit('.', 1)[0]
-                        self.smtp_combo.addItem(name)
+            smtp_dir = get_data_directory('smtps')
+            for item in os.listdir(smtp_dir):
+                item_path = os.path.join(smtp_dir, item)
+                if os.path.isdir(item_path):
+                    self.smtp_combo.addItem(item)
+                elif item.endswith(('.json', '.xlsx', '.xls')):
+                    name = item.rsplit('.', 1)[0]
+                    self.smtp_combo.addItem(name)
             
             # Load subject lists
             self.subjects_combo.clear()
             self.subjects_combo.addItem("Select subject list...")
-            subjects_dir = os.path.join(data_dir, 'subjects')
-            if os.path.exists(subjects_dir):
-                for item in os.listdir(subjects_dir):
-                    item_path = os.path.join(subjects_dir, item)
-                    if os.path.isdir(item_path):
-                        self.subjects_combo.addItem(item)
-                    elif item.endswith(('.json', '.xlsx', '.xls')):
-                        name = item.rsplit('.', 1)[0]
-                        self.subjects_combo.addItem(name)
+            subjects_dir = get_data_directory('subjects')
+            for item in os.listdir(subjects_dir):
+                item_path = os.path.join(subjects_dir, item)
+                if os.path.isdir(item_path):
+                    self.subjects_combo.addItem(item)
+                elif item.endswith(('.json', '.xlsx', '.xls')):
+                    name = item.rsplit('.', 1)[0]
+                    self.subjects_combo.addItem(name)
             
             # Load message templates
             self.template_combo.clear()
             self.template_combo.addItem("Select message template...")
-            messages_dir = os.path.join(data_dir, 'messages')
-            if os.path.exists(messages_dir):
-                for item in os.listdir(messages_dir):
-                    item_path = os.path.join(messages_dir, item)
-                    if os.path.isdir(item_path):
-                        self.template_combo.addItem(item)
-                    elif item.endswith(('.json', '.html', '.txt')):
-                        name = item.rsplit('.', 1)[0]
-                        self.template_combo.addItem(name)
+            messages_dir = get_data_directory('messages')
+            for item in os.listdir(messages_dir):
+                item_path = os.path.join(messages_dir, item)
+                if os.path.isdir(item_path):
+                    self.template_combo.addItem(item)
+                elif item.endswith(('.json', '.html', '.txt')):
+                    name = item.rsplit('.', 1)[0]
+                    self.template_combo.addItem(name)
             
             # Load attachment lists
             self.attachments_combo.clear()
             self.attachments_combo.addItem("Select attachment list...")
-            attachments_dir = os.path.join(data_dir, 'attachments')
-            if os.path.exists(attachments_dir):
-                for item in os.listdir(attachments_dir):
-                    item_path = os.path.join(attachments_dir, item)
-                    if os.path.isdir(item_path):
-                        self.attachments_combo.addItem(item)
-                    elif item.endswith('.json'):
-                        name = item.rsplit('.', 1)[0]
-                        self.attachments_combo.addItem(name)
+            attachments_dir = get_data_directory('attachments')
+            for item in os.listdir(attachments_dir):
+                item_path = os.path.join(attachments_dir, item)
+                if os.path.isdir(item_path):
+                    self.attachments_combo.addItem(item)
+                elif item.endswith('.json'):
+                    name = item.rsplit('.', 1)[0]
+                    self.attachments_combo.addItem(name)
             
             # Load proxy lists
             self.proxies_combo.clear()
             self.proxies_combo.addItem("Select proxy list...")
-            proxies_dir = os.path.join(data_dir, 'proxies')
-            if os.path.exists(proxies_dir):
-                for item in os.listdir(proxies_dir):
-                    item_path = os.path.join(proxies_dir, item)
-                    if os.path.isdir(item_path):
-                        self.proxies_combo.addItem(item)
-                    elif item.endswith('.json'):
-                        name = item.rsplit('.', 1)[0]
-                        self.proxies_combo.addItem(name)
+            proxies_dir = get_data_directory('proxies')
+            for item in os.listdir(proxies_dir):
+                item_path = os.path.join(proxies_dir, item)
+                if os.path.isdir(item_path):
+                    self.proxies_combo.addItem(item)
+                elif item.endswith('.json'):
+                    name = item.rsplit('.', 1)[0]
+                    self.proxies_combo.addItem(name)
             
             logger.info("Available data loaded", 
                        leads=self.leads_combo.count()-1, 

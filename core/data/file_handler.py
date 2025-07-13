@@ -189,6 +189,53 @@ class FileHandler:
         except Exception as e:
             raise DataFileError(f"Failed to read Excel file: {e}", filepath=filepath)
     
+    def load_excel(self, filepath: str, sheet_name: Optional[str] = None) -> List[List[Any]]:
+        """
+        Load Excel file and return all data as a list of lists.
+        
+        Args:
+            filepath: Path to Excel file
+            sheet_name: Name of sheet to read (first sheet if None)
+            
+        Returns:
+            List of lists representing the Excel data (including headers)
+            
+        Raises:
+            DataFileError: If file cannot be read
+        """
+        try:
+            validated_path = validate_attachment_path(filepath)
+            
+            workbook = openpyxl.load_workbook(validated_path, read_only=True)
+            
+            if sheet_name:
+                if sheet_name not in workbook.sheetnames:
+                    raise DataFileError(f"Sheet '{sheet_name}' not found in workbook", filepath=filepath)
+                worksheet = workbook[sheet_name]
+            else:
+                worksheet = workbook.active
+            
+            # Read all data as lists
+            data = []
+            for row in worksheet.iter_rows(values_only=True):
+                # Skip completely empty rows
+                if any(cell is not None for cell in row):
+                    # Convert None values to empty strings
+                    row_data = [str(cell) if cell is not None else "" for cell in row]
+                    data.append(row_data)
+            
+            workbook.close()
+            
+            logger.info("Excel file loaded successfully", 
+                       filepath=filepath, rows=len(data))
+            
+            return data
+        
+        except FileNotFoundError:
+            raise DataFileError(f"Excel file not found: {filepath}", filepath=filepath)
+        except Exception as e:
+            raise DataFileError(f"Failed to load Excel file: {e}", filepath=filepath)
+    
     def write_excel_file(self, filepath: str, data: List[Dict[str, Any]], 
                         sheet_name: str = "Data") -> bool:
         """

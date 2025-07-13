@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QComboBox, QSplitter, QFrame
 )
 from PyQt6.QtGui import QAction, QCursor, QDesktopServices, QFont
-from PyQt6.QtCore import Qt, pyqtSignal, QUrl, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QUrl, QTimer, QObject
 
 import os
 import shutil
@@ -40,18 +40,26 @@ from ui.message_preview import MessagePreviewWindow, find_message_file
 logger = get_module_logger(__name__)
 
 
-class MessageWorker(BaseWorker):
+class MessageWorker(QObject, BaseWorker):
     """Worker for message operations using new foundation."""
     
     messages_loaded = pyqtSignal(list)  # List[EmailTemplate]
     messages_imported = pyqtSignal(list)  # List[str] - imported folder paths
     messages_exported = pyqtSignal(bool, str)  # success, message
     folder_created = pyqtSignal(str)  # folder path
+    progress_updated = pyqtSignal(object)  # WorkerProgress
+    finished = pyqtSignal()
+    error_occurred = pyqtSignal(str)
     
     def __init__(self):
-        super().__init__(name="message_worker")
+        QObject.__init__(self)
+        BaseWorker.__init__(self, name="message_worker")
         self.file_handler = FileHandler()
         self.data_validator = DataValidator()
+        
+        # Connect BaseWorker progress to PyQt signals
+        self.add_progress_callback(self._emit_progress)
+        self.add_completion_callback(self._emit_completion)
         
         # Operation parameters
         self.operation = None
@@ -60,6 +68,27 @@ class MessageWorker(BaseWorker):
         self.source_files = None
         self.templates = None
         self.export_path = None
+    
+    def _emit_progress(self, progress: WorkerProgress):
+        """Emit progress signal."""
+        self.progress_updated.emit(progress)
+    
+    def _emit_completion(self, result: Any, error: Optional[Exception]):
+        """Emit completion signals."""
+        if error:
+            self.error_occurred.emit(str(error))
+        else:
+            # Emit operation-specific signals
+            if self.operation == "load":
+                self.messages_loaded.emit(result or [])
+            elif self.operation == "import":
+                self.messages_imported.emit(result or [])
+            elif self.operation == "export":
+                self.messages_exported.emit(True, "Messages exported successfully")
+            elif self.operation == "create_folder":
+                self.folder_created.emit(result or "")
+        
+        self.finished.emit()
     
     def load_message_list(self, base_dir: str, list_name: str):
         """Load messages from a specific list folder."""

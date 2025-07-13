@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QDialogButtonBox, QGridLayout
 )
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QObject
 
 import os
 from typing import List, Dict, Any, Optional
@@ -35,25 +35,54 @@ from workers.base_worker import BaseWorker, WorkerProgress, WorkerStatus
 logger = get_module_logger(__name__)
 
 
-class LeadsWorker(BaseWorker):
+class LeadsWorker(QObject, BaseWorker):
     """Worker for leads operations using new foundation."""
     
     leads_loaded = pyqtSignal(list)  # List[Lead]
     leads_saved = pyqtSignal(bool, str)  # success, message
     leads_imported = pyqtSignal(list, int)  # leads, total_count
     validation_completed = pyqtSignal(dict)  # validation results
+    progress_updated = pyqtSignal(object)  # WorkerProgress
+    finished = pyqtSignal()
+    error_occurred = pyqtSignal(str)
     
     def __init__(self):
-        super().__init__(name="leads_worker")
+        QObject.__init__(self)
+        BaseWorker.__init__(self, name="leads_worker")
         self.file_handler = FileHandler()
         self.email_validator = EmailValidator()
         self.data_validator = DataValidator()
+        
+        # Connect BaseWorker progress to PyQt signals
+        self.add_progress_callback(self._emit_progress)
+        self.add_completion_callback(self._emit_completion)
         
         # Operation parameters
         self.operation = None
         self.file_path = None
         self.leads_data = None
         self.validation_data = None
+    
+    def _emit_progress(self, progress: WorkerProgress):
+        """Emit progress signal."""
+        self.progress_updated.emit(progress)
+    
+    def _emit_completion(self, result: Any, error: Optional[Exception]):
+        """Emit completion signals."""
+        if error:
+            self.error_occurred.emit(str(error))
+        else:
+            # Emit operation-specific signals
+            if self.operation == "load":
+                self.leads_loaded.emit(result or [])
+            elif self.operation == "save":
+                self.leads_saved.emit(True, "Leads saved successfully")
+            elif self.operation == "import":
+                self.leads_imported.emit(result or [], len(result) if result else 0)
+            elif self.operation == "validate":
+                self.validation_completed.emit(result or {})
+        
+        self.finished.emit()
     
     def load_leads(self, file_path: str):
         """Load leads from file."""

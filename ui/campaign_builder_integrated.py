@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QSplitter, QListWidget, QInputDialog, QSpacerItem, QSizePolicy,
     QFormLayout, QDialog, QDialogButtonBox, QLineEdit, QCheckBox, QDateTimeEdit
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QDateTime
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QDateTime, QObject
 
 import os
 import json
@@ -37,18 +37,26 @@ from core.engine.smtp_client import EmailSender
 logger = get_module_logger(__name__)
 
 
-class CampaignWorker(BaseWorker):
+class CampaignWorker(QObject, BaseWorker):
     """Worker for campaign operations using new foundation."""
     
     campaign_loaded = pyqtSignal(object)  # Campaign
     campaign_saved = pyqtSignal(bool, str)  # success, message
     email_sent = pyqtSignal(str, bool, str)  # recipient, success, message
     campaign_completed = pyqtSignal(object, dict)  # campaign, results
+    progress_updated = pyqtSignal(object)  # WorkerProgress
+    finished = pyqtSignal()
+    error_occurred = pyqtSignal(str)
     
     def __init__(self):
-        super().__init__(name="campaign_worker")
+        QObject.__init__(self)
+        BaseWorker.__init__(self, name="campaign_worker")
         self.file_handler = FileHandler()
         self.data_validator = DataValidator()
+        
+        # Connect BaseWorker progress to PyQt signals
+        self.add_progress_callback(self._emit_progress)
+        self.add_completion_callback(self._emit_completion)
         
         # Operation parameters
         self.operation = None
@@ -57,6 +65,25 @@ class CampaignWorker(BaseWorker):
         self.leads = None
         self.smtp_configs = None
         self.email_template = None
+    
+    def _emit_progress(self, progress: WorkerProgress):
+        """Emit progress signal."""
+        self.progress_updated.emit(progress)
+    
+    def _emit_completion(self, result: Any, error: Optional[Exception]):
+        """Emit completion signals."""
+        if error:
+            self.error_occurred.emit(str(error))
+        else:
+            # Emit operation-specific signals
+            if self.operation == "load":
+                self.campaign_loaded.emit(result)
+            elif self.operation == "save":
+                self.campaign_saved.emit(True, "Campaign saved successfully")
+            elif self.operation == "execute":
+                self.campaign_completed.emit(self.campaign, result or {})
+        
+        self.finished.emit()
     
     def load_campaign(self, file_path: str):
         """Load campaign from file."""

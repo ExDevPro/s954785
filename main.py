@@ -184,17 +184,7 @@ def exception_hook(exc_type, exc_value, exc_tb):
                 f.write("-" * 80 + "\n")
         except Exception:
             pass  # If even file writing fails, just continue
-            except Exception as msg_e:
-                logger.error("Error showing critical message box", error=str(msg_e))
-        else:
-            logger.error("Fatal error with no app instance", error=error_msg)
         
-        sys.exit(1)
-        
-    except Exception as hook_error:
-        # Fallback if even our error handling fails
-        print(f"CRITICAL: Exception hook failed: {hook_error}")
-        print(f"Original error: {exc_type.__name__}: {exc_value}")
         sys.exit(1)
 
 # --- Main Execution ---

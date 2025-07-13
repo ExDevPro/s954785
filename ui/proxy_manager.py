@@ -88,18 +88,20 @@ class ProxyManager(QWidget):
 
         left_layout = QVBoxLayout()
         left_layout.addWidget(QLabel("<b>Proxy Lists</b>"))
-        self.list_widget = QListWidget()
-        self.list_widget.currentTextChanged.connect(self._load_list)
-        left_layout.addWidget(self.list_widget)
-
+        
+        # List controls at the top for consistency
         list_buttons = QHBoxLayout()
-        btn_new = QPushButton("＋ New List")
+        btn_new = QPushButton("➕ New List")
         btn_new.clicked.connect(self._new_list)
-        btn_del = QPushButton("🗑️ Delete List")
+        btn_del = QPushButton("🗑 Delete")
         btn_del.clicked.connect(self._delete_list)
         list_buttons.addWidget(btn_new)
         list_buttons.addWidget(btn_del)
         left_layout.addLayout(list_buttons)
+        
+        self.list_widget = QListWidget()
+        self.list_widget.currentTextChanged.connect(self._load_list)
+        left_layout.addWidget(self.list_widget)
 
         right_layout = QVBoxLayout()
 

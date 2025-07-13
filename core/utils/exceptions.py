@@ -427,7 +427,7 @@ def handle_exception(exception: Exception, context: Optional[str] = None, exc_tb
         
         error_details = {
             'exception_type': type(exception).__name__,
-            'message': str(exception),
+            'error_message': str(exception),
             'context': context or "Unknown context"
         }
         

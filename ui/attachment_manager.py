@@ -56,17 +56,20 @@ class AttachmentManager(QWidget):
         left_layout = QVBoxLayout(left_pane_widget)
         left_layout.setContentsMargins(5, 5, 5, 5)
         left_layout.addWidget(QLabel("<b>Attachment Lists</b>"))
+        
+        # List controls at the top for consistency
+        list_button_layout = QHBoxLayout()
+        btn_new = QPushButton("➕ New List"); btn_new.setToolTip("Create a new empty attachment list (folder)"); btn_new.clicked.connect(self._new_list)
+        btn_del = QPushButton("🗑 Delete"); btn_del.setToolTip("Delete the selected attachment list (folder) and all its contents"); btn_del.clicked.connect(self._delete_list)
+        list_button_layout.addWidget(btn_new); list_button_layout.addWidget(btn_del)
+        left_layout.addLayout(list_button_layout)
+        
         self.list_widget = QListWidget()
         self.list_widget.setObjectName("attachmentListWidget")
         self.list_widget.currentTextChanged.connect(self._load_list_contents)
         self.list_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.list_widget.customContextMenuRequested.connect(self._show_list_context_menu)
         left_layout.addWidget(self.list_widget)
-        list_button_layout = QHBoxLayout()
-        btn_new = QPushButton("＋ New List"); btn_new.setToolTip("Create a new empty attachment list (folder)"); btn_new.clicked.connect(self._new_list)
-        btn_del = QPushButton("🗑️ Delete List"); btn_del.setToolTip("Delete the selected attachment list (folder) and all its contents"); btn_del.clicked.connect(self._delete_list)
-        list_button_layout.addWidget(btn_new); list_button_layout.addWidget(btn_del)
-        left_layout.addLayout(list_button_layout)
 
         # --- Right pane ---
         right_pane_widget = QWidget()

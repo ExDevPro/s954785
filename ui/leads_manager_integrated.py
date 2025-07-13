@@ -47,8 +47,7 @@ class LeadsWorker(QObject, BaseWorker):
     error_occurred = pyqtSignal(str)
     
     def __init__(self):
-        QObject.__init__(self)
-        BaseWorker.__init__(self, name="leads_worker")
+        super().__init__(name="leads_worker")
         self.file_handler = FileHandler()
         self.email_validator = EmailValidator()
         self.data_validator = DataValidator()

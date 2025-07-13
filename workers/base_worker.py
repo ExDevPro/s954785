@@ -10,7 +10,6 @@ This module provides the base worker class for all background operations:
 
 import threading
 import time
-from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Callable, List
 from enum import Enum
 from dataclasses import dataclass
@@ -55,7 +54,7 @@ class WorkerProgress:
             self.percentage = 0.0
 
 
-class BaseWorker(ABC):
+class BaseWorker:
     """Base class for all worker threads."""
     
     def __init__(self, name: str, timeout: Optional[float] = None):
@@ -68,6 +67,11 @@ class BaseWorker(ABC):
         """
         self.name = name
         self.timeout = timeout
+        
+        # Check if subclass properly implements _execute method
+        # We check if the method is overridden from the base class
+        if self.__class__._execute is BaseWorker._execute:
+            raise WorkerError(f"Worker '{name}' must implement '_execute' method")
         
         # Thread management
         self._thread: Optional[threading.Thread] = None
@@ -401,7 +405,6 @@ class BaseWorker(ABC):
                 except Exception as e:
                     self._logger.exception(e, "in completion callback")
     
-    @abstractmethod
     def _execute(self, *args, **kwargs) -> Any:
         """
         Execute worker implementation.
@@ -418,7 +421,7 @@ class BaseWorker(ABC):
         Raises:
             Any exceptions should be handled by the base class
         """
-        pass
+        raise NotImplementedError(f"Worker '{self.name}' must implement '_execute' method")
 
 
 class WorkerPool:

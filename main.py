@@ -135,11 +135,24 @@ def exception_hook(exc_type, exc_value, exc_tb):
     """Global exception handler for uncaught exceptions."""
     try:
         # Use new foundation error handling
-        error_msg = handle_exception(
-            Exception(f"{exc_type.__name__}: {exc_value}"),
-            "Uncaught exception occurred",
-            exc_tb=exc_tb
-        )
+        try:
+            error_msg = handle_exception(
+                Exception(f"{exc_type.__name__}: {exc_value}"),
+                "Uncaught exception occurred",
+                exc_tb=exc_tb
+            )
+        except Exception as handle_ex:
+            # Fallback if handle_exception itself fails
+            error_msg = f"Critical error in error handler: {handle_ex}\nOriginal error: {exc_type.__name__}: {exc_value}"
+            
+            # Log directly to file
+            import os
+            import datetime
+            log_file = os.path.join(os.path.dirname(__file__), 'logs', 'errors.txt')
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            with open(log_file, 'a', encoding='utf-8') as f:
+                f.write(f"[{datetime.datetime.now().isoformat()}] {error_msg}\n")
+                f.write("-" * 80 + "\n")
         
         # Show user-friendly message
         app_instance = QApplication.instance()
@@ -148,6 +161,29 @@ def exception_hook(exc_type, exc_value, exc_tb):
                 QMessageBox.critical(None, "Fatal Error", 
                                    f"An unexpected error occurred:\n\n{error_msg}\n\n"
                                    f"Please check the logs for details.")
+            except Exception:
+                # If message box fails, just print
+                print(f"CRITICAL ERROR: {error_msg}")
+        else:
+            print(f"CRITICAL ERROR: {error_msg}")
+    
+    except Exception as hook_error:
+        # Ultimate fallback - just print everything
+        print(f"CRITICAL: Exception hook failed: {hook_error}")
+        print(f"Original error: {exc_type.__name__}: {exc_value}")
+        
+        # Try to write to error file
+        try:
+            import os
+            import datetime
+            log_file = os.path.join(os.path.dirname(__file__), 'logs', 'errors.txt')
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            with open(log_file, 'a', encoding='utf-8') as f:
+                f.write(f"[{datetime.datetime.now().isoformat()}] Exception hook failed: {hook_error}\n")
+                f.write(f"Original error: {exc_type.__name__}: {exc_value}\n")
+                f.write("-" * 80 + "\n")
+        except Exception:
+            pass  # If even file writing fails, just continue
             except Exception as msg_e:
                 logger.error("Error showing critical message box", error=str(msg_e))
         else:

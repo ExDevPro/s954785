@@ -205,6 +205,25 @@ class ConfigManager:
         """Get complete configuration dictionary."""
         return self._config.copy()
     
+    def __getitem__(self, key: str) -> Any:
+        """Support dictionary-style access for getting values."""
+        return self.get(key)
+    
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Support dictionary-style access for setting values."""
+        self.set(key, value)
+    
+    def __contains__(self, key: str) -> bool:
+        """Support 'in' operator for checking if key exists."""
+        try:
+            keys = key.split('.')
+            value = self._config
+            for k in keys:
+                value = value[k]
+            return True  # If we got here, the key exists
+        except (KeyError, TypeError):
+            return False
+    
     @property
     def base_path(self) -> str:
         """Get application base path."""

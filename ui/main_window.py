@@ -15,19 +15,23 @@ from PyQt6.QtGui import QIcon, QFont, QPalette, QPixmap, QCursor, QMovie
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-# Import UI Managers - using improved threaded versions with fallback
+# Import UI Managers - using enhanced versions
 def import_managers():
-    """Import managers with fallback to original versions"""
+    """Import managers with enhanced versions as priority"""
     try:
-        # Try importing improved versions
-        from ui.leads_manager_improved import LeadsManagerImproved as LeadsManager
+        # Try importing enhanced versions first
+        from ui.leads_manager_enhanced import LeadsManagerEnhanced as LeadsManager
+        print("✅ Using enhanced leads manager")
+        
+        # Fallback to improved versions for others
         from ui.smtp_manager_improved import SMTPManagerImproved as SMTPManager  
         from ui.proxy_manager_improved import ProxyManagerImproved as ProxyManager
         from ui.subject_manager_improved import SubjectManagerImproved as SubjectManager
         from ui.message_manager_improved import MessageManagerImproved as MessageManager
         from ui.attachment_manager_improved import AttachmentManagerImproved as AttachmentManager
-        print("✅ Using improved threaded managers")
+        print("✅ Using enhanced/improved managers")
         return LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, True
+        
     except Exception as e:
         print(f"⚠️ Fallback to original managers: {e}")
         try:
@@ -308,46 +312,124 @@ class MainWindow(QMainWindow):
             print(f"Current widget ({current_widget.__class__.__name__}) has no _refresh_list method.")
 
     def _build_ui(self):
-        # (UI Building logic remains mostly the same,
-        # ensures dashboard_widget is created)
-        root = QWidget(); self.setCentralWidget(root); layout = QVBoxLayout(root); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0); splitter = QSplitter(Qt.Orientation.Horizontal)
-        sidebar_widget = QWidget(); sidebar_widget.setObjectName("sidebarWidget"); sidebar_layout = QVBoxLayout(sidebar_widget); sidebar_layout.setContentsMargins(5, 5, 5, 5); sidebar_layout.setSpacing(10)
-        self.nav = QListWidget(); self.nav.setObjectName("navigationList"); self.nav.setMaximumWidth(300); self.nav.setIconSize(QSize(24, 24))
-        self.nav_items_in_order = [ "Dashboard", "Leads", "SMTPs", "Subjects", "Messages", "Attachments", "Proxies", "Campaigns", "Settings" ]
-        icon_files = [ "dashboard.ico", "leads.ico", "smtp.ico", "subject.ico", "message.ico", "attachment.ico", "proxy.ico", "campaign.ico", "settings.ico" ]
+        # Create responsive main layout
+        root = QWidget()
+        self.setCentralWidget(root)
+        layout = QHBoxLayout(root)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # Create main splitter for responsive design
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(1)
+        
+        # Enhanced sidebar with responsive sizing
+        sidebar_widget = QWidget()
+        sidebar_widget.setObjectName("sidebarWidget")
+        sidebar_layout = QVBoxLayout(sidebar_widget)
+        sidebar_layout.setContentsMargins(10, 10, 10, 10)
+        sidebar_layout.setSpacing(8)
+        
+        # Enhanced navigation list with proper sizing
+        self.nav = QListWidget()
+        self.nav.setObjectName("navigationList")
+        self.nav.setMinimumWidth(200)
+        self.nav.setMaximumWidth(350)
+        self.nav.setSizePolicy(QWidget.SizePolicy.Policy.Preferred, QWidget.SizePolicy.Policy.Expanding)
+        self.nav.setIconSize(QSize(20, 20))
+        # Navigation items with better organization
+        self.nav_items_in_order = [
+            "Dashboard", "Leads", "SMTPs", "Subjects", 
+            "Messages", "Attachments", "Proxies", "Campaigns", "Settings"
+        ]
+        icon_files = [
+            "dashboard.ico", "leads.ico", "smtp.ico", "subject.ico", 
+            "message.ico", "attachment.ico", "proxy.ico", "campaign.ico", "settings.ico"
+        ]
         self.NAV_MAP = {label: index for index, label in enumerate(self.nav_items_in_order)}
-        icon_base = os.path.join(self.base_path, 'assets','icons')
+        icon_base = os.path.join(self.base_path, 'assets', 'icons')
+        
+        # Add navigation items with proper sizing
         for i, text in enumerate(self.nav_items_in_order):
             icon_path = os.path.join(icon_base, icon_files[i])
             if not os.path.exists(icon_path):
-                 print(f"W: Icon missing '{icon_path}'. Using default.")
-                 icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_FileDialogDetailedView if text == "Settings" else QApplication.style().StandardPixmap.SP_FileIcon)
-            else: icon = QIcon(icon_path)
-            item = QListWidgetItem(icon, text); item.setSizeHint(QSize(item.sizeHint().width(), 48)); item.setToolTip(text); self.nav.addItem(item)
+                print(f"W: Icon missing '{icon_path}'. Using default.")
+                icon = QApplication.style().standardIcon(
+                    QApplication.style().StandardPixmap.SP_FileDialogDetailedView 
+                    if text == "Settings" else QApplication.style().StandardPixmap.SP_FileIcon
+                )
+            else:
+                icon = QIcon(icon_path)
+            
+            item = QListWidgetItem(icon, f"  {text}")  # Add spacing for better appearance
+            item.setSizeHint(QSize(0, 44))  # Consistent height, auto width
+            item.setToolTip(text)
+            self.nav.addItem(item)
+        
         sidebar_layout.addWidget(self.nav)
-        refresh_layout = QHBoxLayout()
-        self.refresh_button = QPushButton(" Refresh")
+        
+        # Enhanced refresh section with better layout
+        refresh_section = QFrame()
+        refresh_section.setFrameStyle(QFrame.Shape.StyledPanel)
+        refresh_section.setMaximumHeight(60)
+        refresh_layout = QHBoxLayout(refresh_section)
+        refresh_layout.setContentsMargins(8, 8, 8, 8)
+        refresh_layout.setSpacing(8)
+        
+        # Refresh button with better styling
+        self.refresh_button = QPushButton("🔄 Refresh")
         self.refresh_button.setObjectName("sidebarRefreshButton")
-        refresh_icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_BrowserReload)
-        if not refresh_icon.isNull(): self.refresh_button.setIcon(refresh_icon)
         self.refresh_button.setToolTip("Refresh dashboard counts and current list view")
         self.refresh_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.refresh_button.clicked.connect(self._trigger_global_refresh)
-        refresh_layout.addWidget(self.refresh_button)
-        self.loading_label = QLabel(); self.loading_label.setObjectName("loadingIndicator")
+        self.refresh_button.setMinimumHeight(32)
+        
+        # Loading indicator
+        self.loading_label = QLabel()
+        self.loading_label.setObjectName("loadingIndicator")
         loading_gif_path = os.path.join(self.base_path, 'assets', 'icons', 'loading.gif')
         if os.path.exists(loading_gif_path):
-            self.loading_movie = QMovie(loading_gif_path); self.loading_movie.setScaledSize(QSize(16, 16)); self.loading_label.setMovie(self.loading_movie)
-        else: print("W: loading.gif not found. Loading indicator disabled."); self.loading_movie = None
-        self.loading_label.setFixedSize(16, 16); self.loading_label.hide()
+            self.loading_movie = QMovie(loading_gif_path)
+            self.loading_movie.setScaledSize(QSize(16, 16))
+            self.loading_label.setMovie(self.loading_movie)
+        else:
+            print("W: loading.gif not found. Loading indicator disabled.")
+            self.loading_movie = None
+        self.loading_label.setFixedSize(16, 16)
+        self.loading_label.hide()
+        
+        refresh_layout.addWidget(self.refresh_button)
         refresh_layout.addWidget(self.loading_label)
-        refresh_layout.addStretch(1)
-        sidebar_layout.addLayout(refresh_layout)
+        refresh_layout.addStretch()
+        
+        sidebar_layout.addWidget(refresh_section)
+        
+        # Set minimum sidebar width to prevent text cutoff
+        sidebar_widget.setMinimumWidth(220)
+        sidebar_widget.setMaximumWidth(380)
+        
+        # Add sidebar to splitter
         splitter.addWidget(sidebar_widget)
-        self.stack = QStackedWidget(); self.stack.setObjectName("contentStack")
-        # *** Ensure dashboard_widget is created HERE ***
+        
+        # Create content area with proper responsive design
+        self.stack = QStackedWidget()
+        self.stack.setObjectName("contentStack")
+        self.stack.setSizePolicy(QWidget.SizePolicy.Policy.Expanding, QWidget.SizePolicy.Policy.Expanding)
+        
+        # Ensure dashboard widget is created
         self.dashboard_widget = DashboardWidget(self.base_path, self.data_dir)
         self.stack.addWidget(self.dashboard_widget)
+        
+        # Add content area to splitter
+        splitter.addWidget(self.stack)
+        
+        # Set splitter proportions for responsive design
+        splitter.setSizes([280, 1000])  # Sidebar: content ratio
+        splitter.setStretchFactor(0, 0)  # Sidebar doesn't stretch
+        splitter.setStretchFactor(1, 1)  # Content area stretches
+        
+        # Add splitter to main layout
+        layout.addWidget(splitter)
         
         # Add managers using improved threaded versions
         logger.info("Initializing UI managers")
@@ -392,13 +474,13 @@ class MainWindow(QMainWindow):
         self.campaign_builder = CampaignBuilder()
         self.stack.addWidget(self.campaign_builder)
         
+        # Settings Panel
         self.settings_panel = SettingsPanel(self.base_path, self.config, self.config_path)
         self.stack.addWidget(self.settings_panel)
-        splitter.addWidget(self.stack)
-        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 1); splitter.setSizes([250, 1350]); splitter.setHandleWidth(2)
-        splitter.setStyleSheet("QSplitter::handle { background-color: #C0C4CC; } QSplitter::handle:hover { background-color: #A0A4AC; } QSplitter::handle:pressed { background-color: #8A8E96; }")
-        layout.addWidget(splitter)
-        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex); self.nav.setCurrentRow(0)
+        
+        # Connect navigation to stack
+        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.nav.setCurrentRow(0)
 
     # *** ADDED: Slot to receive signal from MessageManager ***
     def _update_message_dashboard_count(self, list_count: int, total_messages: int):

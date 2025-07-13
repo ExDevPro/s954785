@@ -98,37 +98,67 @@ def load_fonts(base):
         # Don't raise - fonts are optional
 
 def load_and_apply_theme(app, base_path, config):
-    """Load and apply theme using new configuration system."""
+    """Load and apply professional theme."""
     try:
         themes_dir = os.path.join(base_path, 'assets', 'themes')
-        theme_filename = config.get('gui.default_theme', DEFAULT_THEME_FILENAME)
+        
+        # Use Professional theme by default for enhanced experience
+        theme_filename = config.get('gui.default_theme', 'Professional.qss')
         theme_path = os.path.join(themes_dir, theme_filename)
         
+        # Fallback to Professional.qss if configured theme doesn't exist
         if not os.path.exists(theme_path):
-            logger.warning("Saved theme missing, falling back to default", 
+            logger.warning("Configured theme missing, using Professional theme", 
                          theme=theme_filename)
-            theme_filename = DEFAULT_THEME_FILENAME
+            theme_filename = 'Professional.qss'
             theme_path = os.path.join(themes_dir, theme_filename)
             update_config('gui.default_theme', theme_filename)
         
+        # Final fallback to Default.qss
         if not os.path.exists(theme_path):
-            logger.warning("Default theme missing, using no theme")
-            app.setStyleSheet("")
-            return ""
+            logger.warning("Professional theme missing, falling back to default")
+            theme_filename = DEFAULT_THEME_FILENAME
+            theme_path = os.path.join(themes_dir, theme_filename)
+        
+        if not os.path.exists(theme_path):
+            logger.warning("No themes available, using built-in styling")
+            # Apply basic professional styling
+            qss = """
+            * { font-family: "Segoe UI", Arial, sans-serif; }
+            QMainWindow { background-color: #F8F9FA; }
+            QPushButton { 
+                background-color: #2196F3; color: white; border: none; 
+                padding: 8px 16px; border-radius: 4px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #1976D2; }
+            """
+            app.setStyleSheet(qss)
+            return qss
         
         with open(theme_path, 'r', encoding='utf-8') as f:
             qss = f.read()
         
         app.setStyleSheet(qss)
-        logger.info("Theme applied successfully", theme=theme_filename)
+        logger.info("Professional theme applied successfully", theme=theme_filename)
         return qss
         
     except Exception as e:
-        handle_exception(e, "Error loading theme")
+        handle_exception(e, "Error loading professional theme")
+        # Apply minimal fallback styling
+        fallback_qss = """
+        * { font-family: "Segoe UI", Arial, sans-serif; font-size: 11pt; }
+        QMainWindow { background-color: #F8F9FA; }
+        QPushButton { 
+            background-color: #2196F3; color: white; border: none; 
+            padding: 8px 16px; border-radius: 4px; font-weight: bold;
+        }
+        QPushButton:hover { background-color: #1976D2; }
+        QListWidget::item:selected { background-color: #2196F3; color: white; }
+        """
+        app.setStyleSheet(fallback_qss)
         QMessageBox.warning(None, "Theme Error", 
-                          f"Could not load theme '{theme_filename}': {e}")
-        app.setStyleSheet("")
-        return ""
+                          f"Could not load theme. Using fallback styling.\nError: {e}")
+        return fallback_qss
 
 # --- Exception Hook ---
 def exception_hook(exc_type, exc_value, exc_tb):

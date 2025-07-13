@@ -1,52 +1,98 @@
 """
-Path sanitization utilities for Bulk Email Sender.
-
-This module provides utilities for:
-- Path validation and sanitization
-- Directory traversal prevention
-- Safe file operations
+Path sanitization utilities for Bulk Email Sender - SECURITY DISABLED
+As requested by user: "i don't need any security and related protection"
 """
 
 import os
-import re
 from pathlib import Path
 from typing import Optional, List
-import urllib.parse
 
 from core.utils.logger import get_module_logger
-from core.utils.exceptions import ValidationError
 
 logger = get_module_logger(__name__)
 
-
 class PathSanitizer:
-    """Handles path sanitization and validation."""
-    
-    # Dangerous path patterns (only for actual security threats)
-    DANGEROUS_PATTERNS = [
-        r'\.\.[/\\]',  # Directory traversal attempts
-        r'[<>"|?*]',   # Invalid filename characters  
-        r'[\x00-\x1f\x7f-\x9f]',  # Control characters
-    ]
-    
-    # Reserved Windows filenames
-    WINDOWS_RESERVED = {
-        'CON', 'PRN', 'AUX', 'NUL',
-        'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-        'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
-    }
+    """Path sanitizer with security features DISABLED for desktop use"""
     
     def __init__(self, allowed_base_paths: Optional[List[str]] = None):
-        """
-        Initialize path sanitizer.
+        """Initialize with security disabled"""
+        self.allowed_base_paths = allowed_base_paths or []
+        logger.info("PathSanitizer initialized with security DISABLED for desktop use")
+    
+    def sanitize_path(self, path: str, create_dirs: bool = False) -> str:
+        """Return normalized path without security restrictions"""
+        if not path:
+            return ""
         
-        Args:
-            allowed_base_paths: List of allowed base paths for operations
-        """
-        self.allowed_base_paths = []
-        if allowed_base_paths:
-            for path in allowed_base_paths:
-                self.allowed_base_paths.append(os.path.abspath(path))
+        # Just normalize the path
+        normalized = os.path.normpath(path)
+        
+        if create_dirs:
+            try:
+                directory = os.path.dirname(normalized)
+                if directory and not os.path.exists(directory):
+                    os.makedirs(directory, exist_ok=True)
+            except Exception as e:
+                logger.warning(f"Could not create directory: {e}")
+        
+        return normalized
+    
+    def is_safe_path(self, path: str) -> bool:
+        """Always return True since security is disabled"""
+        return True
+    
+    def validate_path(self, path: str, must_exist: bool = False) -> bool:
+        """Basic validation without security restrictions"""
+        if not path:
+            return False
+        
+        try:
+            normalized_path = os.path.normpath(path)
+            
+            if must_exist and not os.path.exists(normalized_path):
+                return False
+            
+            return True
+        except Exception:
+            return False
+    
+    def safe_join(self, *paths) -> str:
+        """Join paths safely without security restrictions"""
+        if not paths:
+            return ""
+        
+        return os.path.normpath(os.path.join(*paths))
+    
+    def clean_filename(self, filename: str) -> str:
+        """Basic filename cleaning without security restrictions"""
+        if not filename:
+            return "untitled"
+        
+        # Just remove some obviously problematic characters
+        unsafe_chars = '<>:"|?*\x00'
+        clean_name = filename
+        
+        for char in unsafe_chars:
+            clean_name = clean_name.replace(char, '_')
+        
+        # Remove leading/trailing spaces and dots
+        clean_name = clean_name.strip(' .')
+        
+        if not clean_name:
+            clean_name = "untitled"
+        
+        return clean_name
+    
+    def validate_filename(self, filename: str) -> bool:
+        """Basic filename validation without security restrictions"""
+        if not filename:
+            return False
+        
+        # Very basic checks
+        if len(filename) > 255:
+            return False
+        
+        return True
     
     def sanitize_filename(self, filename: str) -> str:
         """

@@ -21,15 +21,21 @@ def import_managers():
     try:
         # Try importing enhanced versions first
         from ui.leads_manager_enhanced import LeadsManagerEnhanced as LeadsManager
-        print("✅ Using enhanced leads manager")
+        from ui.smtp_manager_enhanced import SMTPManagerEnhanced as SMTPManager
+        from ui.subjects_manager_enhanced import SubjectsManagerEnhanced as SubjectManager
+        from ui.proxy_manager_enhanced import ProxyManagerEnhanced as ProxyManager
+        print("✅ Using enhanced leads, SMTP, subjects, and proxy managers")
         
-        # Fallback to improved versions for others
-        from ui.smtp_manager_improved import SMTPManagerImproved as SMTPManager  
-        from ui.proxy_manager_improved import ProxyManagerImproved as ProxyManager
-        from ui.subject_manager_improved import SubjectManagerImproved as SubjectManager
-        from ui.message_manager_improved import MessageManagerImproved as MessageManager
-        from ui.attachment_manager_improved import AttachmentManagerImproved as AttachmentManager
-        print("✅ Using enhanced/improved managers")
+        # Fallback to original versions for message and attachment managers
+        try:
+            from ui.message_manager import MessageManager
+            from ui.attachment_manager import AttachmentManager
+        except:
+            # Create placeholder managers if needed
+            MessageManager = LeadsManager  # Temporary fallback
+            AttachmentManager = LeadsManager  # Temporary fallback
+            
+        print("✅ Using enhanced managers with original fallbacks")
         return LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, True
         
     except Exception as e:

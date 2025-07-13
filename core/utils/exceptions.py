@@ -408,54 +408,70 @@ class WorkerCancelledException(WorkerError):
 
 
 # Exception utilities
-def handle_exception(exception: Exception, context: Optional[Dict[str, Any]] = None) -> BulkEmailSenderException:
+def handle_exception(exception: Exception, context: Optional[str] = None, exc_tb=None) -> str:
     """
-    Convert a generic exception to a BulkEmailSenderException.
+    Handle and log exceptions, returning user-friendly error message.
     
     Args:
         exception: Original exception
-        context: Additional context
+        context: Additional context string
+        exc_tb: Exception traceback (ignored for compatibility)
         
     Returns:
-        BulkEmailSenderException instance
+        User-friendly error message string
     """
-    if isinstance(exception, BulkEmailSenderException):
-        return exception
+    # Log the error with full details
+    try:
+        from core.utils.logger import get_module_logger
+        logger = get_module_logger("exceptions")
+        
+        error_details = {
+            'exception_type': type(exception).__name__,
+            'message': str(exception),
+            'context': context or "Unknown context"
+        }
+        
+        if exc_tb:
+            import traceback
+            error_details['traceback'] = ''.join(traceback.format_tb(exc_tb))
+        
+        logger.error("Exception handled", **error_details)
+        
+        # Write to error log file as well
+        try:
+            import os
+            import datetime
+            error_log_path = os.path.join("logs", "errors.txt")
+            os.makedirs(os.path.dirname(error_log_path), exist_ok=True)
+            
+            with open(error_log_path, "a", encoding="utf-8") as f:
+                timestamp = datetime.datetime.now().isoformat()
+                f.write(f"[{timestamp}] {context}: {type(exception).__name__}: {exception}\n")
+                if exc_tb:
+                    f.write(f"Traceback: {error_details.get('traceback', 'N/A')}\n")
+                f.write("-" * 80 + "\n")
+        except Exception as log_error:
+            print(f"Failed to write error log: {log_error}")
+        
+    except Exception as logging_error:
+        print(f"Failed to log exception: {logging_error}")
     
-    # Map common exception types
+    # Return user-friendly message
     exception_type = type(exception).__name__
     message = str(exception)
     
     if "connection" in message.lower() or "network" in message.lower():
-        return NetworkError(
-            f"Network error: {message}",
-            context=context,
-            original_exception=exception
-        )
+        return f"Network connection error: {message}"
     elif "timeout" in message.lower():
-        return NetworkTimeoutError(
-            f"Timeout error: {message}",
-            context=context,
-            original_exception=exception
-        )
+        return f"Operation timed out: {message}"
     elif "smtp" in message.lower() or "mail" in message.lower():
-        return SMTPError(
-            f"SMTP error: {message}",
-            context=context,
-            original_exception=exception
-        )
+        return f"Email server error: {message}"
     elif "file" in message.lower() or "path" in message.lower():
-        return DataFileError(
-            f"File error: {message}",
-            context=context,
-            original_exception=exception
-        )
+        return f"File operation error: {message}"
+    elif "permission" in message.lower() or "access" in message.lower():
+        return f"Permission error: {message}"
     else:
-        return BulkEmailSenderException(
-            f"Unexpected error ({exception_type}): {message}",
-            context=context,
-            original_exception=exception
-        )
+        return f"An error occurred ({exception_type}): {message}"
 
 
 def get_error_summary(exceptions: List[BulkEmailSenderException]) -> Dict[str, Any]:

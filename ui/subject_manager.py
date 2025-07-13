@@ -377,6 +377,10 @@ class SubjectManager(QWidget):
 
     def _import(self):
         if self.import_thread and self.import_thread.isRunning(): QMessageBox.warning(self, "Import Running", "An import operation is already in progress."); return
+        # Check if a list is selected
+        if not self.current_list_path:
+            QMessageBox.warning(self, "No List Selected", "Please create or select a subject list first before importing.")
+            return
         file_path, _ = QFileDialog.getOpenFileName(self, "Import Subjects", "", "Subject Files (*.txt *.csv *.xlsx);;Text Files (*.txt);;CSV Files (*.csv);;Excel Files (*.xlsx)")
         if not file_path: return
         self.progress_bar.setVisible(True); self.progress_bar.setFormat("Importing..."); self.progress_bar.setMaximum(0)

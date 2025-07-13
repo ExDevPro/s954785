@@ -134,7 +134,19 @@ class ProxyManager(QWidget):
 
         self.table = QTableWidget(0, 9)
         self.table.setHorizontalHeaderLabels(["Host/IP", "Port", "Username", "Password", "Location", "SMTP Host", "Result", "Imported", "Updated"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Enable manual column resizing
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        # Set reasonable default widths
+        header.resizeSection(0, 120)  # Host/IP
+        header.resizeSection(1, 60)   # Port
+        header.resizeSection(2, 100)  # Username
+        header.resizeSection(3, 100)  # Password
+        header.resizeSection(4, 100)  # Location
+        header.resizeSection(5, 120)  # SMTP Host
+        header.resizeSection(6, 80)   # Result
+        header.resizeSection(7, 100)  # Imported
+        header.resizeSection(8, 100)  # Updated
         right_layout.addWidget(self.table)
 
         self.progress = QProgressBar()

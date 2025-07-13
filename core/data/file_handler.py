@@ -522,6 +522,68 @@ class FileHandler:
                 'exists': False,
                 'error': str(e)
             }
+    
+    def save_excel(self, data: List[Dict[str, Any]], filepath: str, sheet_name: str = "Sheet1") -> bool:
+        """
+        Save data to Excel file.
+        
+        Args:
+            data: List of dictionaries to save
+            filepath: Path to save Excel file
+            sheet_name: Name of the Excel sheet
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            if not data:
+                logger.warning("No data to save to Excel file", filepath=filepath)
+                return False
+            
+            # Create workbook and worksheet
+            workbook = openpyxl.Workbook()
+            worksheet = workbook.active
+            worksheet.title = sheet_name
+            
+            # Get headers from first row
+            headers = list(data[0].keys())
+            
+            # Write headers
+            for col, header in enumerate(headers, 1):
+                worksheet.cell(row=1, column=col, value=header)
+            
+            # Write data rows
+            for row_idx, row_data in enumerate(data, 2):
+                for col_idx, header in enumerate(headers, 1):
+                    value = row_data.get(header, "")
+                    worksheet.cell(row=row_idx, column=col_idx, value=value)
+            
+            # Auto-adjust column widths
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = get_column_letter(column[0].column)
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)  # Cap at 50 for readability
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+            
+            # Ensure directory exists
+            ensure_directory(os.path.dirname(filepath))
+            
+            # Save the file
+            workbook.save(filepath)
+            workbook.close()
+            
+            logger.info("Excel file saved successfully", filepath=filepath, rows=len(data))
+            return True
+            
+        except Exception as e:
+            logger.error("Failed to save Excel file", filepath=filepath, error=str(e))
+            return False
 
 
 # Convenience functions

@@ -145,18 +145,20 @@ class IntegratedSMTPManager(QWidget):
         self.smtp_table.customContextMenuRequested.connect(self.show_smtp_context_menu)
         self.smtp_table.cellChanged.connect(self.on_smtp_edited)
         
-        # Auto-resize columns
+        # Enable manual column resizing
         header = self.smtp_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Host
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Port
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Security
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Username
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Password
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # From Name
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # From Email
-        header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)  # Status
-        header.setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)  # Response Time
-        header.setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents)  # Last Tested
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)  # Allow manual resizing
+        # Set reasonable default widths
+        header.resizeSection(0, 150)  # Host
+        header.resizeSection(1, 60)   # Port
+        header.resizeSection(2, 80)   # Security
+        header.resizeSection(3, 120)  # Username
+        header.resizeSection(4, 100)  # Password
+        header.resizeSection(5, 120)  # From Name
+        header.resizeSection(6, 150)  # From Email
+        header.resizeSection(7, 80)   # Status
+        header.resizeSection(8, 100)  # Response Time
+        header.resizeSection(9, 120)  # Last Tested
         
         right_layout.addWidget(self.smtp_table)
         
@@ -431,6 +433,14 @@ class IntegratedSMTPManager(QWidget):
     
     def import_smtp_configs(self):
         """Import SMTP configs from external file."""
+        # Check if a list is selected
+        if not self.current_list_file:
+            QMessageBox.warning(
+                self, "No List Selected",
+                "Please create or select an SMTP list first before importing."
+            )
+            return
+        
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Import SMTP Configs",
             "", "Excel Files (*.xlsx *.xls);;CSV Files (*.csv)"

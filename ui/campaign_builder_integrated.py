@@ -81,6 +81,10 @@ class CampaignWorker(BaseWorker):
         self.email_template = email_template
         self.start()
     
+    def _execute(self, *args, **kwargs) -> Any:
+        """Execute the work based on operation type (required by BaseWorker)."""
+        return self.execute_work()
+    
     def execute_work(self) -> Any:
         """Execute the work based on operation type."""
         try:
@@ -198,7 +202,7 @@ class CampaignWorker(BaseWorker):
                 
                 # Update progress
                 progress = int((idx / len(self.leads)) * 100)
-                self.update_progress(idx, len(self.leads), 
+                self._update_progress(idx, len(self.leads), 
                                    f"Sending email {idx + 1} of {len(self.leads)}")
                 
                 try:

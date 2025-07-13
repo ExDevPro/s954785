@@ -80,6 +80,10 @@ class LeadsWorker(BaseWorker):
         self.leads_data = leads
         self.start()
     
+    def _execute(self, *args, **kwargs) -> Any:
+        """Execute the work based on operation type (required by BaseWorker)."""
+        return self.execute_work()
+    
     def execute_work(self) -> Any:
         """Execute the work based on operation type."""
         try:
@@ -103,7 +107,7 @@ class LeadsWorker(BaseWorker):
         logger.info("Loading leads from file", file_path=self.file_path)
         
         # Update progress
-        self.update_progress(0, 100, "Loading leads file...")
+        self._update_progress(0, 100, "Loading leads file...")
         
         try:
             # Load data using file handler
@@ -143,7 +147,7 @@ class LeadsWorker(BaseWorker):
                 
                 # Update progress
                 progress = int((idx / total_rows) * 90) + 10  # 10-100%
-                self.update_progress(idx, total_rows, 
+                self._update_progress(idx, total_rows, 
                                    f"Processing lead {idx + 1} of {total_rows}")
                 
                 try:
@@ -192,7 +196,7 @@ class LeadsWorker(BaseWorker):
         
         try:
             # Update progress
-            self.update_progress(0, 100, "Preparing leads data...")
+            self._update_progress(0, 100, "Preparing leads data...")
             
             # Convert leads to tabular data
             if not self.leads_data:
@@ -218,7 +222,7 @@ class LeadsWorker(BaseWorker):
                     
                     # Update progress
                     progress = int((idx / total_leads) * 90) + 10
-                    self.update_progress(idx, total_leads, 
+                    self._update_progress(idx, total_leads, 
                                        f"Processing lead {idx + 1} of {total_leads}")
                     
                     row = [
@@ -259,7 +263,7 @@ class LeadsWorker(BaseWorker):
             # Additional import validation
             if leads:
                 # Validate emails
-                self.update_progress(90, 100, "Validating imported emails...")
+                self._update_progress(90, 100, "Validating imported emails...")
                 email_results = self.email_validator.validate_bulk([lead.email for lead in leads])
                 
                 valid_count = sum(1 for result in email_results.values() if result.is_valid)
@@ -298,7 +302,7 @@ class LeadsWorker(BaseWorker):
                 
                 # Update progress
                 progress = int((idx / total_leads) * 50)  # First 50% for lead validation
-                self.update_progress(idx, total_leads, 
+                self._update_progress(idx, total_leads, 
                                    f"Validating lead {idx + 1} of {total_leads}")
                 
                 try:
@@ -316,7 +320,7 @@ class LeadsWorker(BaseWorker):
             
             # Bulk email validation
             if emails_to_validate and not self.is_cancelled():
-                self.update_progress(50, 100, "Validating email addresses...")
+                self._update_progress(50, 100, "Validating email addresses...")
                 email_results = self.email_validator.validate_bulk(emails_to_validate)
                 results['email_validation'] = email_results
             
@@ -428,12 +432,16 @@ class IntegratedLeadsManager(QWidget):
         self.leads_table.customContextMenuRequested.connect(self.show_lead_context_menu)
         self.leads_table.cellChanged.connect(self.on_lead_edited)
         
-        # Auto-resize columns
+        # Enable manual column resizing
         header = self.leads_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Email
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # First Name
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Last Name
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Status
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)  # Allow manual resizing
+        # Set reasonable default widths
+        header.resizeSection(0, 200)  # Email
+        header.resizeSection(1, 120)  # First Name
+        header.resizeSection(2, 120)  # Last Name
+        header.resizeSection(3, 80)   # Status
+        header.resizeSection(4, 100)  # Tags
+        header.resizeSection(5, 120)  # Created
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Tags
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # Created
         
@@ -648,6 +656,14 @@ class IntegratedLeadsManager(QWidget):
     
     def import_leads(self):
         """Import leads from external file."""
+        # Check if a list is selected
+        if not self.current_list_file:
+            QMessageBox.warning(
+                self, "No List Selected",
+                "Please create or select a leads list first before importing."
+            )
+            return
+        
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Import Leads",
             "", "Excel Files (*.xlsx *.xls);;CSV Files (*.csv)"

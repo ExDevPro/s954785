@@ -89,6 +89,10 @@ class MessageWorker(BaseWorker):
         self.message_name = message_name
         self.start()
     
+    def _execute(self, *args, **kwargs) -> Any:
+        """Execute the work based on operation type (required by BaseWorker)."""
+        return self.execute_work()
+    
     def execute_work(self) -> Any:
         """Execute the work based on operation type."""
         try:
@@ -135,7 +139,7 @@ class MessageWorker(BaseWorker):
                 
                 # Update progress
                 progress = int((idx / max(total_folders, 1)) * 100)
-                self.update_progress(idx, total_folders, f"Loading message {idx + 1} of {total_folders}")
+                self._update_progress(idx, total_folders, f"Loading message {idx + 1} of {total_folders}")
                 
                 message_path = os.path.join(list_path, message_folder)
                 
@@ -304,7 +308,7 @@ class MessageWorker(BaseWorker):
                         
                         files_processed += 1
                         progress = int((files_processed / max(total_files, 1)) * 100)
-                        self.update_progress(files_processed, total_files, 
+                        self._update_progress(files_processed, total_files, 
                                            f"Importing {message_name}: {file_name}")
                     
                     imported_folders.append(dest_folder_path)

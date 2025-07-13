@@ -64,6 +64,59 @@ class SMTPStatus(Enum):
     FAILED = "failed"
 
 
+class TemplateStatus(Enum):
+    """Template status enumeration."""
+    DRAFT = "draft"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ARCHIVED = "archived"
+
+
+class TemplateVariableType(Enum):
+    """Template variable type enumeration."""
+    TEXT = "text"
+    EMAIL = "email"
+    NUMBER = "number"
+    DATE = "date"
+    BOOLEAN = "boolean"
+
+
+@dataclass
+class TemplateVariable:
+    """Template variable data structure."""
+    
+    name: str
+    type: TemplateVariableType = TemplateVariableType.TEXT
+    required: bool = True
+    default_value: Optional[str] = None
+    description: str = ""
+    
+    def __post_init__(self):
+        """Validate variable after initialization."""
+        if not self.name:
+            raise ValueError("Variable name is required")
+        
+        # Normalize name (remove spaces, convert to lowercase)
+        self.name = self.name.strip().lower().replace(' ', '_')
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert variable to dictionary."""
+        return {
+            'name': self.name,
+            'type': self.type.value,
+            'required': self.required,
+            'default_value': self.default_value,
+            'description': self.description
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TemplateVariable':
+        """Create variable from dictionary."""
+        if 'type' in data and isinstance(data['type'], str):
+            data['type'] = TemplateVariableType(data['type'])
+        return cls(**data)
+
+
 @dataclass
 class Lead:
     """Lead data structure."""
@@ -307,9 +360,11 @@ class EmailTemplate:
     name: str = ""
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
+    status: TemplateStatus = TemplateStatus.DRAFT
     
     # Template variables
-    variables: List[str] = field(default_factory=list)
+    variables: List[str] = field(default_factory=list)  # Variable names extracted from content
+    template_variables: List[TemplateVariable] = field(default_factory=list)  # Detailed variable objects
     
     def __post_init__(self):
         """Process template after initialization."""
@@ -332,6 +387,26 @@ class EmailTemplate:
             variables.update(var.strip() for var in matches)
         
         self.variables = sorted(list(variables))
+    
+    def add_variable(self, template_variable: TemplateVariable) -> None:
+        """Add a template variable."""
+        # Check if variable already exists
+        existing_names = [var.name for var in self.template_variables]
+        if template_variable.name not in existing_names:
+            self.template_variables.append(template_variable)
+            self.updated_at = datetime.now()
+    
+    def remove_variable(self, variable_name: str) -> None:
+        """Remove a template variable by name."""
+        self.template_variables = [var for var in self.template_variables if var.name != variable_name]
+        self.updated_at = datetime.now()
+    
+    def get_variable(self, variable_name: str) -> Optional[TemplateVariable]:
+        """Get a template variable by name."""
+        for var in self.template_variables:
+            if var.name == variable_name:
+                return var
+        return None
     
     def render(self, variables: Dict[str, Any]) -> tuple[str, str, str]:
         """
@@ -381,7 +456,9 @@ class EmailTemplate:
             'subject': self.subject,
             'html_content': self.html_content,
             'text_content': self.text_content,
+            'status': self.status.value,
             'variables': self.variables,
+            'template_variables': [var.to_dict() for var in self.template_variables],
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
@@ -394,6 +471,14 @@ class EmailTemplate:
             data['created_at'] = datetime.fromisoformat(data['created_at'])
         if 'updated_at' in data and isinstance(data['updated_at'], str):
             data['updated_at'] = datetime.fromisoformat(data['updated_at'])
+        
+        # Handle enum fields
+        if 'status' in data and isinstance(data['status'], str):
+            data['status'] = TemplateStatus(data['status'])
+        
+        # Handle template variables
+        if 'template_variables' in data and isinstance(data['template_variables'], list):
+            data['template_variables'] = [TemplateVariable.from_dict(var_data) for var_data in data['template_variables']]
         
         return cls(**data)
 

@@ -1,4 +1,5 @@
-# ui/message_manager.py (Reverted counting logic to folders)
+# Enhanced Message Manager with Description Support
+
 import os
 import shutil
 import traceback
@@ -10,16 +11,700 @@ from PyQt6.QtWidgets import (
     QWidget, QLabel, QListWidget, QPushButton,
     QFileDialog, QMessageBox, QHBoxLayout, QVBoxLayout, QInputDialog,
     QTableWidget, QTableWidgetItem, QHeaderView, QTextEdit,
-    QProgressBar, QApplication, QStyle, QAbstractItemView, QMenu
+    QProgressBar, QApplication, QStyle, QAbstractItemView, QMenu,
+    QDialog, QDialogButtonBox, QFrame, QSplitter, QScrollArea,
+    QSizePolicy
 )
-from PyQt6.QtGui import QAction, QCursor, QDesktopServices
+from PyQt6.QtGui import QAction, QCursor, QDesktopServices, QFont
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject, QSize, QUrl
 
 # --- Import the Preview Window ---
-from .message_preview import MessagePreviewWindow, find_message_file
+try:
+    from .message_preview import MessagePreviewWindow, find_message_file
+except ImportError:
+    # Fallback if preview window doesn't exist
+    MessagePreviewWindow = None
+    def find_message_file(folder_path):
+        return None
 
 BASE_PATH = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 DATA_DIR = os.path.join(BASE_PATH, 'data', 'messages')
+
+class CreateMessageListDialog(QDialog):
+    """Professional dialog for creating new message lists with descriptions."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create New Message List")
+        self.setModal(True)
+        self.setFixedSize(400, 250)
+        
+        layout = QVBoxLayout(self)
+        
+        # List name
+        layout.addWidget(QLabel("List Name:"))
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("Enter message list name...")
+        layout.addWidget(self.name_edit)
+        
+        # Description
+        layout.addWidget(QLabel("Description (Optional):"))
+        self.desc_edit = QTextEdit()
+        self.desc_edit.setPlaceholderText("Enter description for this message list...")
+        self.desc_edit.setMaximumHeight(80)
+        layout.addWidget(self.desc_edit)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        
+        self.name_edit.textChanged.connect(self._validate_input)
+        self._validate_input()
+    
+    def _validate_input(self):
+        name = self.name_edit.text().strip()
+        valid = bool(name and re.match(r'^[a-zA-Z0-9_\-\s]+$', name))
+        self.findChild(QDialogButtonBox).button(QDialogButtonBox.StandardButton.Ok).setEnabled(valid)
+    
+    def get_list_data(self):
+        return {
+            'name': self.name_edit.text().strip(),
+            'description': self.desc_edit.toPlainText().strip()
+        }
+
+class EnhancedMessageManager(QWidget):
+    """Enhanced Message Manager with description support and better UI."""
+    
+    counts_changed = pyqtSignal()
+    
+    def __init__(self, parent=None, config=None):
+        super().__init__(parent)
+        self.config = config
+        self.current_list = None
+        
+        self._setup_ui()
+        self._load_lists()
+        self._apply_styling()
+    
+    def _setup_ui(self):
+        """Setup the user interface."""
+        main_layout = QHBoxLayout(self)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Left panel - Lists
+        left_panel = self._create_left_panel()
+        main_layout.addWidget(left_panel, 1)
+        
+        # Splitter for resizable panels
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Right panel - Messages view
+        right_panel = self._create_right_panel()
+        splitter.addWidget(right_panel)
+        
+        # Description panel
+        desc_panel = self._create_description_panel()
+        splitter.addWidget(desc_panel)
+        
+        splitter.setSizes([600, 200])
+        main_layout.addWidget(splitter, 3)
+    
+    def _create_left_panel(self):
+        """Create the left panel with list management."""
+        panel = QFrame()
+        panel.setFrameStyle(QFrame.Shape.StyledPanel)
+        panel.setMaximumWidth(350)
+        panel.setMinimumWidth(250)
+        
+        layout = QVBoxLayout(panel)
+        
+        # Header
+        header = QLabel("💬 Message Lists")
+        header.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.setStyleSheet("QLabel { background: #9b59b6; color: white; padding: 8px; border-radius: 4px; }")
+        layout.addWidget(header)
+        
+        # Search
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("🔍 Search lists...")
+        self.search_edit.textChanged.connect(self._filter_lists)
+        layout.addWidget(self.search_edit)
+        
+        # Lists
+        self.message_lists = QListWidget()
+        self.message_lists.itemClicked.connect(self._on_list_selected)
+        self.message_lists.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.message_lists.customContextMenuRequested.connect(self._show_list_context_menu)
+        layout.addWidget(self.message_lists)
+        
+        # Buttons
+        buttons_layout = QVBoxLayout()
+        
+        self.btn_create_list = QPushButton("➕ New List")
+        self.btn_create_list.clicked.connect(self._create_new_list)
+        self.btn_create_list.setStyleSheet("QPushButton { background: #27ae60; color: white; padding: 8px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_create_list)
+        
+        self.btn_delete_list = QPushButton("🗑️ Delete List")
+        self.btn_delete_list.clicked.connect(self._delete_list)
+        self.btn_delete_list.setStyleSheet("QPushButton { background: #e74c3c; color: white; padding: 8px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_delete_list)
+        
+        layout.addLayout(buttons_layout)
+        
+        return panel
+    
+    def _create_right_panel(self):
+        """Create the right panel with messages table."""
+        panel = QFrame()
+        panel.setFrameStyle(QFrame.Shape.StyledPanel)
+        
+        layout = QVBoxLayout(panel)
+        
+        # Header
+        header_layout = QHBoxLayout()
+        self.table_header = QLabel("📋 Messages")
+        self.table_header.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        header_layout.addWidget(self.table_header)
+        
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+        
+        # Messages table
+        self.message_table = QTableWidget()
+        self.message_table.setColumnCount(3)
+        self.message_table.setHorizontalHeaderLabels(["Message Name", "Type", "Size"])
+        self.message_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.message_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.message_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.message_table.customContextMenuRequested.connect(self._show_message_context_menu)
+        layout.addWidget(self.message_table)
+        
+        # Buttons
+        buttons_layout = QHBoxLayout()
+        
+        self.btn_add_message = QPushButton("➕ Add Message")
+        self.btn_add_message.clicked.connect(self._add_message)
+        self.btn_add_message.setStyleSheet("QPushButton { background: #27ae60; color: white; padding: 6px 12px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_add_message)
+        
+        self.btn_preview = QPushButton("👁️ Preview")
+        self.btn_preview.clicked.connect(self._preview_message)
+        buttons_layout.addWidget(self.btn_preview)
+        
+        self.btn_edit = QPushButton("✏️ Edit")
+        self.btn_edit.clicked.connect(self._edit_message)
+        buttons_layout.addWidget(self.btn_edit)
+        
+        self.btn_delete_message = QPushButton("🗑️ Delete")
+        self.btn_delete_message.clicked.connect(self._delete_message)
+        self.btn_delete_message.setStyleSheet("QPushButton { background: #e74c3c; color: white; padding: 6px 12px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_delete_message)
+        
+        buttons_layout.addStretch()
+        layout.addLayout(buttons_layout)
+        
+        return panel
+    
+    def _create_description_panel(self):
+        """Create the description panel."""
+        panel = QFrame()
+        panel.setFrameStyle(QFrame.Shape.StyledPanel)
+        panel.setMinimumWidth(200)
+        panel.setMaximumWidth(300)
+        
+        layout = QVBoxLayout(panel)
+        
+        # Header
+        header = QLabel("📝 Description")
+        header.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.setStyleSheet("QLabel { background: #95a5a6; color: white; padding: 6px; border-radius: 4px; }")
+        layout.addWidget(header)
+        
+        # Scrollable description area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        self.description_label = QLabel("Select a list to view its description.")
+        self.description_label.setWordWrap(True)
+        self.description_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.description_label.setStyleSheet("QLabel { padding: 10px; background: white; }")
+        
+        scroll_area.setWidget(self.description_label)
+        layout.addWidget(scroll_area)
+        
+        # Edit button
+        self.btn_edit_desc = QPushButton("✏️ Edit Description")
+        self.btn_edit_desc.clicked.connect(self._edit_description)
+        self.btn_edit_desc.setEnabled(False)
+        layout.addWidget(self.btn_edit_desc)
+        
+        return panel
+    
+    def _apply_styling(self):
+        """Apply professional styling."""
+        self.setStyleSheet("""
+            QFrame {
+                border: 1px solid #bdc3c7;
+                border-radius: 6px;
+                background: #ecf0f1;
+            }
+            QListWidget {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                background: white;
+                padding: 5px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #ecf0f1;
+            }
+            QListWidget::item:selected {
+                background: #9b59b6;
+                color: white;
+            }
+            QTableWidget {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                background: white;
+                gridline-color: #ecf0f1;
+            }
+            QTableWidget::item {
+                padding: 5px;
+            }
+            QLineEdit {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #9b59b6;
+            }
+            QPushButton {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 6px 12px;
+                background: #ecf0f1;
+            }
+            QPushButton:hover {
+                background: #d5dbdb;
+            }
+            QPushButton:pressed {
+                background: #bdc3c7;
+            }
+        """)
+    
+    # ========== List Management Methods ==========
+    
+    def _load_lists(self):
+        """Load all available message lists."""
+        os.makedirs(DATA_DIR, exist_ok=True)
+        self.message_lists.clear()
+        
+        for item in os.listdir(DATA_DIR):
+            item_path = os.path.join(DATA_DIR, item)
+            if os.path.isdir(item_path):
+                self.message_lists.addItem(item)
+        
+        self.counts_changed.emit()
+    
+    def _filter_lists(self):
+        """Filter lists based on search text."""
+        search_text = self.search_edit.text().lower()
+        for i in range(self.message_lists.count()):
+            item = self.message_lists.item(i)
+            item.setHidden(search_text not in item.text().lower())
+    
+    def _create_new_list(self):
+        """Create a new message list."""
+        dialog = CreateMessageListDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            data = dialog.get_list_data()
+            list_name = data['name']
+            description = data['description']
+            
+            # Check if list already exists
+            list_dir = os.path.join(DATA_DIR, list_name)
+            if os.path.exists(list_dir):
+                QMessageBox.warning(self, "List Exists", f"A message list named '{list_name}' already exists.")
+                return
+            
+            try:
+                # Create list directory
+                os.makedirs(list_dir, exist_ok=True)
+                
+                # Save description
+                if description:
+                    desc_file = os.path.join(list_dir, "description.txt")
+                    with open(desc_file, 'w', encoding='utf-8') as f:
+                        f.write(description)
+                
+                self._load_lists()
+                
+                # Select the new list
+                for i in range(self.message_lists.count()):
+                    if self.message_lists.item(i).text() == list_name:
+                        self.message_lists.setCurrentRow(i)
+                        self._on_list_selected(self.message_lists.item(i))
+                        break
+                
+                QMessageBox.information(self, "Success", f"Message list '{list_name}' created successfully.")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create list: {str(e)}")
+    
+    def _delete_list(self):
+        """Delete the selected message list."""
+        current_item = self.message_lists.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, "No Selection", "Please select a list to delete.")
+            return
+        
+        list_name = current_item.text()
+        
+        reply = QMessageBox.question(
+            self, "Confirm Delete",
+            f"Are you sure you want to delete the message list '{list_name}'?\n\nThis action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                list_dir = os.path.join(DATA_DIR, list_name)
+                shutil.rmtree(list_dir)
+                
+                self._load_lists()
+                self._clear_messages_view()
+                
+                QMessageBox.information(self, "Success", f"Message list '{list_name}' deleted successfully.")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to delete list: {str(e)}")
+    
+    def _on_list_selected(self, item):
+        """Handle list selection."""
+        if not item:
+            return
+        
+        list_name = item.text()
+        self.current_list = list_name
+        
+        # Update description
+        self._load_description(list_name)
+        
+        # Load messages
+        self._load_messages(list_name)
+        
+        # Update UI
+        self.table_header.setText(f"📋 {list_name} - Messages")
+        self.btn_edit_desc.setEnabled(True)
+    
+    def _load_description(self, list_name):
+        """Load and display list description."""
+        desc_file = os.path.join(DATA_DIR, list_name, "description.txt")
+        
+        if os.path.exists(desc_file):
+            try:
+                with open(desc_file, 'r', encoding='utf-8') as f:
+                    description = f.read().strip()
+                
+                if description:
+                    self.description_label.setText(description)
+                else:
+                    self.description_label.setText("No description available.")
+            except Exception as e:
+                self.description_label.setText(f"Error loading description: {str(e)}")
+        else:
+            self.description_label.setText("No description available.")
+    
+    def _edit_description(self):
+        """Edit the description of the current list."""
+        if not self.current_list:
+            return
+        
+        desc_file = os.path.join(DATA_DIR, self.current_list, "description.txt")
+        current_desc = ""
+        
+        if os.path.exists(desc_file):
+            try:
+                with open(desc_file, 'r', encoding='utf-8') as f:
+                    current_desc = f.read().strip()
+            except:
+                pass
+        
+        new_desc, ok = QInputDialog.getMultiLineText(
+            self, "Edit Description", 
+            f"Description for '{self.current_list}':",
+            current_desc
+        )
+        
+        if ok:
+            try:
+                if new_desc.strip():
+                    with open(desc_file, 'w', encoding='utf-8') as f:
+                        f.write(new_desc.strip())
+                else:
+                    # Remove description file if empty
+                    if os.path.exists(desc_file):
+                        os.remove(desc_file)
+                
+                self._load_description(self.current_list)
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to save description: {str(e)}")
+    
+    def _load_messages(self, list_name):
+        """Load messages for the selected list."""
+        list_dir = os.path.join(DATA_DIR, list_name)
+        self.message_table.setRowCount(0)
+        
+        if not os.path.exists(list_dir):
+            return
+        
+        try:
+            for item in os.listdir(list_dir):
+                item_path = os.path.join(list_dir, item)
+                if os.path.isdir(item_path) and item != "description.txt":
+                    # Add message folder to table
+                    row = self.message_table.rowCount()
+                    self.message_table.insertRow(row)
+                    
+                    # Message name
+                    self.message_table.setItem(row, 0, QTableWidgetItem(item))
+                    
+                    # Message type (determine from files in folder)
+                    msg_type = self._get_message_type(item_path)
+                    self.message_table.setItem(row, 1, QTableWidgetItem(msg_type))
+                    
+                    # Folder size
+                    size = self._get_folder_size(item_path)
+                    self.message_table.setItem(row, 2, QTableWidgetItem(size))
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load messages: {str(e)}")
+    
+    def _get_message_type(self, folder_path):
+        """Determine message type from files in folder."""
+        try:
+            files = os.listdir(folder_path)
+            if any(f.endswith('.html') for f in files):
+                return "HTML"
+            elif any(f.endswith('.txt') for f in files):
+                return "Text"
+            else:
+                return "Mixed"
+        except:
+            return "Unknown"
+    
+    def _get_folder_size(self, folder_path):
+        """Get human-readable folder size."""
+        try:
+            total_size = 0
+            for dirpath, dirnames, filenames in os.walk(folder_path):
+                for filename in filenames:
+                    filepath = os.path.join(dirpath, filename)
+                    total_size += os.path.getsize(filepath)
+            
+            # Convert to human-readable format
+            for unit in ['B', 'KB', 'MB', 'GB']:
+                if total_size < 1024.0:
+                    return f"{total_size:.1f} {unit}"
+                total_size /= 1024.0
+            return f"{total_size:.1f} TB"
+        except:
+            return "Unknown"
+    
+    def _clear_messages_view(self):
+        """Clear the messages view."""
+        self.message_table.setRowCount(0)
+        self.current_list = None
+        self.table_header.setText("📋 Messages")
+        self.description_label.setText("Select a list to view its description.")
+        self.btn_edit_desc.setEnabled(False)
+    
+    # ========== Message Management Methods ==========
+    
+    def _add_message(self):
+        """Add a new message to the current list."""
+        if not self.current_list:
+            QMessageBox.warning(self, "No List", "Please select a list first.")
+            return
+        
+        msg_name, ok = QInputDialog.getText(self, "New Message", "Enter message name:")
+        if ok and msg_name.strip():
+            msg_name = msg_name.strip()
+            msg_dir = os.path.join(DATA_DIR, self.current_list, msg_name)
+            
+            if os.path.exists(msg_dir):
+                QMessageBox.warning(self, "Message Exists", f"A message named '{msg_name}' already exists.")
+                return
+            
+            try:
+                os.makedirs(msg_dir, exist_ok=True)
+                
+                # Create default HTML template
+                html_file = os.path.join(msg_dir, "message.html")
+                with open(html_file, 'w', encoding='utf-8') as f:
+                    f.write("""<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Message</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>Hello {{first_name}}!</h1>
+    <p>This is your new email message template.</p>
+    <p>You can edit this message and add your content here.</p>
+    <p>Best regards,<br>
+    {{from_name}}</p>
+</body>
+</html>""")
+                
+                self._load_messages(self.current_list)
+                QMessageBox.information(self, "Success", f"Message '{msg_name}' created successfully.")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create message: {str(e)}")
+    
+    def _preview_message(self):
+        """Preview the selected message."""
+        row = self.message_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "No Selection", "Please select a message to preview.")
+            return
+        
+        msg_name = self.message_table.item(row, 0).text()
+        msg_dir = os.path.join(DATA_DIR, self.current_list, msg_name)
+        
+        if MessagePreviewWindow:
+            try:
+                preview = MessagePreviewWindow(msg_dir, self)
+                preview.show()
+            except Exception as e:
+                QMessageBox.critical(self, "Preview Error", f"Failed to preview message: {str(e)}")
+        else:
+            QMessageBox.information(self, "Preview", f"Preview for '{msg_name}' would open here.")
+    
+    def _edit_message(self):
+        """Edit the selected message."""
+        row = self.message_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "No Selection", "Please select a message to edit.")
+            return
+        
+        msg_name = self.message_table.item(row, 0).text()
+        msg_dir = os.path.join(DATA_DIR, self.current_list, msg_name)
+        
+        try:
+            # Open message folder in file explorer
+            QDesktopServices.openUrl(QUrl.fromLocalFile(msg_dir))
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open message folder: {str(e)}")
+    
+    def _delete_message(self):
+        """Delete the selected message."""
+        row = self.message_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "No Selection", "Please select a message to delete.")
+            return
+        
+        msg_name = self.message_table.item(row, 0).text()
+        
+        reply = QMessageBox.question(
+            self, "Confirm Delete",
+            f"Are you sure you want to delete the message '{msg_name}'?\n\nThis action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                msg_dir = os.path.join(DATA_DIR, self.current_list, msg_name)
+                shutil.rmtree(msg_dir)
+                
+                self._load_messages(self.current_list)
+                QMessageBox.information(self, "Success", f"Message '{msg_name}' deleted successfully.")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to delete message: {str(e)}")
+    
+    # ========== Context Menu Methods ==========
+    
+    def _show_list_context_menu(self, position):
+        """Show context menu for lists."""
+        item = self.message_lists.itemAt(position)
+        
+        menu = QMenu()
+        
+        if item:
+            menu.addAction("📂 Open", lambda: self._on_list_selected(item))
+            menu.addSeparator()
+            menu.addAction("✏️ Edit Description", self._edit_description)
+            menu.addSeparator()
+            menu.addAction("🗑️ Delete", self._delete_list)
+        
+        menu.addSeparator()
+        menu.addAction("➕ New List", self._create_new_list)
+        menu.addAction("🔄 Refresh", self._load_lists)
+        
+        menu.exec(self.message_lists.mapToGlobal(position))
+    
+    def _show_message_context_menu(self, position):
+        """Show context menu for messages."""
+        menu = QMenu()
+        
+        menu.addAction("➕ Add Message", self._add_message)
+        
+        if self.message_table.currentRow() >= 0:
+            menu.addAction("👁️ Preview", self._preview_message)
+            menu.addAction("✏️ Edit", self._edit_message)
+            menu.addAction("🗑️ Delete", self._delete_message)
+        
+        menu.exec(self.message_table.mapToGlobal(position))
+    
+    # ========== Public Methods ==========
+    
+    def get_list_count(self):
+        """Get the number of message lists."""
+        return self.message_lists.count()
+    
+    def refresh_lists(self):
+        """Refresh the lists display."""
+        self._load_lists()
+    
+    # ========== Original Methods (for compatibility) ==========
+    
+    def count_message_folders_for_dashboard(self):
+        """Count message folders for dashboard display."""
+        list_folder_count = 0
+        total_message_subfolder_count = 0
+        
+        try:
+            if os.path.isdir(DATA_DIR):
+                for list_name in os.listdir(DATA_DIR):
+                    list_path = os.path.join(DATA_DIR, list_name)
+                    if os.path.isdir(list_path):
+                        list_folder_count += 1
+                        try:
+                            message_folders_in_list = [
+                                msg_folder for msg_folder in os.listdir(list_path)
+                                if os.path.isdir(os.path.join(list_path, msg_folder)) and msg_folder != "description.txt"
+                            ]
+                            total_message_subfolder_count += len(message_folders_in_list)
+                        except Exception as e:
+                            print(f"Warning: Could not read subfolders in list folder {list_path}: {e}")
+        except Exception as e:
+            print(f"Error counting message folders: {e}")
+        
+        return list_folder_count, total_message_subfolder_count
 
 
 # --- Helper Functions ---

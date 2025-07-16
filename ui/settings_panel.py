@@ -72,23 +72,54 @@ class SettingsPanel(QWidget):
         else: QMessageBox.warning(self, "Theme Error", f"Theme file not found:\n{theme_path}"); return False
 
     def _save_default_theme_preference(self, theme_name: str):
-         self.config['default_theme'] = f"{theme_name}.qss"
-         self.config.pop('default_font', None) # Remove old font key
+         # Handle both dict and ConfigManager objects
+         if hasattr(self.config, 'set'):
+             self.config.set('default_theme', f"{theme_name}.qss")
+             if hasattr(self.config, 'remove'):
+                 try:
+                     self.config.remove('default_font')  # Remove old font key
+                 except:
+                     pass
+         else:
+             self.config['default_theme'] = f"{theme_name}.qss"
+             if 'default_font' in self.config:
+                 del self.config['default_font'] # Remove old font key
+         
          try:
              os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
-             with open(self.config_path, 'w', encoding='utf-8') as f:
-                 json.dump(self.config, f, indent=4)
+             # Handle ConfigManager vs dict save
+             if hasattr(self.config, 'save'):
+                 self.config.save()
+             else:
+                 with open(self.config_path, 'w', encoding='utf-8') as f:
+                     json.dump(self.config, f, indent=4)
              print(f"Saved '{theme_name}' as default theme.")
          except Exception as e:
              QMessageBox.critical(self, "Config Error", f"Could not save default theme setting:\n{e}")
 
     def _set_initial_theme_selection(self):
-         default_theme_filename = self.config.get('default_theme', 'Default.qss'); self.current_theme_name = os.path.splitext(default_theme_filename)[0]
-         current_index = self.theme_combo.findText(self.current_theme_name)
-         if current_index >= 0: self.theme_combo.blockSignals(True); self.theme_combo.setCurrentIndex(current_index); self.theme_combo.blockSignals(False)
+         # Handle both dict and ConfigManager objects
+         if hasattr(self.config, 'get'):
+             default_theme_filename = self.config.get('default_theme', 'Default.qss')
          else:
-              if self.theme_combo.count() > 0: print(f"W (SettingsPanel): Saved theme '{self.current_theme_name}' missing. Using '{self.theme_combo.itemText(0)}'."); self.theme_combo.blockSignals(True); self.theme_combo.setCurrentIndex(0); self.theme_combo.blockSignals(False); self.current_theme_name = self.theme_combo.itemText(0)
-              else: print("W (SettingsPanel): No themes found."); self.current_theme_name = None
+             default_theme_filename = self.config.get('default_theme', 'Default.qss')
+         
+         self.current_theme_name = os.path.splitext(default_theme_filename)[0]
+         current_index = self.theme_combo.findText(self.current_theme_name)
+         if current_index >= 0: 
+             self.theme_combo.blockSignals(True)
+             self.theme_combo.setCurrentIndex(current_index)
+             self.theme_combo.blockSignals(False)
+         else:
+              if self.theme_combo.count() > 0: 
+                  print(f"W (SettingsPanel): Saved theme '{self.current_theme_name}' missing. Using '{self.theme_combo.itemText(0)}'.")
+                  self.theme_combo.blockSignals(True)
+                  self.theme_combo.setCurrentIndex(0)
+                  self.theme_combo.blockSignals(False)
+                  self.current_theme_name = self.theme_combo.itemText(0)
+              else: 
+                  print("W (SettingsPanel): No themes found.")
+                  self.current_theme_name = None
 
     def _on_theme_selected(self, index: int):
         if index < 0: return

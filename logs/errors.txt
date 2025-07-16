@@ -1,0 +1,45 @@
+[2025-07-13T01:28:05.054539] Test context for logging: ValueError: Test error for logging
+--------------------------------------------------------------------------------
+[2025-07-13T01:31:10.053178] Theme switching test: ValueError: Test theme error
+Traceback:   File "<string>", line 13, in <module>
+
+--------------------------------------------------------------------------------
+[2025-07-13T03:52:16.167881] test context: Exception: test
+--------------------------------------------------------------------------------
+[2025-07-13T03:54:31.046645] Test context: ValueError: Test exception
+--------------------------------------------------------------------------------
+[2025-07-13T03:54:31.046824] Test context with kwargs: ValueError: Test exception
+--------------------------------------------------------------------------------
+[2025-07-13T03:54:31.046996] Testing error logging: RuntimeError: Test error for logging verification
+--------------------------------------------------------------------------------
+[2025-07-13T03:55:47.891294] Test context: ValueError: Test exception
+--------------------------------------------------------------------------------
+[2025-07-13T03:55:47.891436] Test context with kwargs: ValueError: Test exception
+--------------------------------------------------------------------------------
+[2025-07-13T03:55:47.891595] Testing error logging: RuntimeError: Test error for logging verification
+--------------------------------------------------------------------------------
+[2025-07-13T03:56:19.436362] Test context: ValueError: Test exception
+--------------------------------------------------------------------------------
+[2025-07-13T03:56:19.436494] Test context with kwargs: ValueError: Test exception
+--------------------------------------------------------------------------------
+[2025-07-13T03:56:19.436628] Testing error logging: RuntimeError: Test error for logging verification
+--------------------------------------------------------------------------------
+[2025-07-13T04:58:15.083855] Uncaught exception occurred: Exception: AttributeError: 'QVBoxLayout' object has no attribute 'setMaximumWidth'
+Traceback:   File "/home/runner/work/s954785/s954785/main.py", line 341, in <module>
+    main()
+  File "/home/runner/work/s954785/s954785/main.py", line 318, in main
+    window = MainWindow(base_path=BASE_PATH, config=config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/s954785/s954785/ui/main_window.py", line 220, in __init__
+    self._build_ui() # This creates self.stack, self.dashboard_widget, etc.
+    ^^^^^^^^^^^^^^^^
+  File "/home/runner/work/s954785/s954785/ui/main_window.py", line 342, in _build_ui
+    self.subject_manager = IntegratedSubjectManager()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/s954785/s954785/ui/subject_manager_integrated.py", line 274, in __init__
+    self.setup_ui()
+  File "/home/runner/work/s954785/s954785/ui/subject_manager_integrated.py", line 289, in setup_ui
+    left_layout.setMaximumWidth(300)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+--------------------------------------------------------------------------------

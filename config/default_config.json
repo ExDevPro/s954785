@@ -1,0 +1,47 @@
+{
+  "app": {
+    "name": "Bulk Email Sender",
+    "version": "2.0.0",
+    "debug": false,
+    "max_threads": 4,
+    "default_timeout": 30
+  },
+  "smtp": {
+    "default_port": 587,
+    "use_tls": true,
+    "timeout": 10,
+    "max_retries": 3,
+    "retry_delay": 1
+  },
+  "email": {
+    "max_attachments": 10,
+    "max_attachment_size_mb": 25,
+    "batch_size": 50,
+    "send_delay": 1
+  },
+  "security": {
+    "encrypt_credentials": true,
+    "session_timeout": 3600,
+    "max_failed_attempts": 5
+  },
+  "logging": {
+    "level": "INFO",
+    "max_file_size_mb": 10,
+    "backup_count": 5,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  },
+  "ui": {
+    "theme": "Default.qss",
+    "preferred_font": "Roboto",
+    "fallback_font": "Segoe UI",
+    "window_width": 1200,
+    "window_height": 800
+  },
+  "paths": {
+    "data_dir": "data",
+    "logs_dir": "logs",
+    "assets_dir": "assets",
+    "themes_dir": "assets/themes",
+    "fonts_dir": "assets/fonts"
+  }
+}

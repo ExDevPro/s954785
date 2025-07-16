@@ -201,17 +201,50 @@ class CampaignBuilder(QWidget):
              self.current_campaign_name = None
 
     def _get_lists(self, cat):
-        path = os.path.join(DATA_DIR, cat); items = []
-        if os.path.isdir(path):
-            try:
-                for name in sorted(os.listdir(path)):
-                    full_path = os.path.join(path, name);
-                    is_list_file = cat in ('leads', 'smtps') and name.lower().endswith('.xlsx');
-                    is_text_file = cat in ('subjects', 'proxies') and name.lower().endswith('.txt');
-                    is_folder = cat in ('messages', 'attachments') and os.path.isdir(full_path)
-                    if is_list_file or is_text_file: items.append(os.path.splitext(name)[0])
-                    elif is_folder: items.append(name)
-            except Exception as e: print(f"W: Could not read {cat} list directory: {e}")
+        """Get available lists for a specific category."""
+        items = []
+        
+        try:
+            if cat == 'leads':
+                # Leads are stored as directories containing Excel files
+                leads_dir = os.path.join(DATA_DIR, 'leads')
+                if os.path.isdir(leads_dir):
+                    for name in sorted(os.listdir(leads_dir)):
+                        list_path = os.path.join(leads_dir, name)
+                        if os.path.isdir(list_path):
+                            # Check if there's an Excel file with the same name
+                            excel_file = os.path.join(list_path, f"{name}.xlsx")
+                            if os.path.exists(excel_file):
+                                items.append(name)
+            
+            elif cat == 'smtps':
+                # SMTP lists are Excel files directly in the smtps directory
+                smtps_dir = os.path.join(DATA_DIR, 'smtps')
+                if os.path.isdir(smtps_dir):
+                    for name in sorted(os.listdir(smtps_dir)):
+                        if name.lower().endswith('.xlsx'):
+                            items.append(os.path.splitext(name)[0])
+            
+            elif cat == 'subjects':
+                # Subject lists are text files directly in the subjects directory
+                subjects_dir = os.path.join(DATA_DIR, 'subjects')
+                if os.path.isdir(subjects_dir):
+                    for name in sorted(os.listdir(subjects_dir)):
+                        if name.lower().endswith('.txt'):
+                            items.append(os.path.splitext(name)[0])
+            
+            elif cat in ('messages', 'attachments', 'proxies'):
+                # These are folder-based lists
+                category_dir = os.path.join(DATA_DIR, cat)
+                if os.path.isdir(category_dir):
+                    for name in sorted(os.listdir(category_dir)):
+                        full_path = os.path.join(category_dir, name)
+                        if os.path.isdir(full_path):
+                            items.append(name)
+        
+        except Exception as e:
+            print(f"Error reading {cat} lists: {e}")
+        
         return items
 
     def _update_list_combos(self):

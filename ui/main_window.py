@@ -15,15 +15,54 @@ from PyQt6.QtGui import QIcon, QFont, QPalette, QPixmap, QCursor, QMovie
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
-# Import other UI Managers
-from ui.leads_manager      import LeadsManager
-from ui.smtp_manager       import SMTPManager
-from ui.subject_manager    import SubjectManager
-from ui.message_manager    import MessageManager # Make sure this is imported
-from ui.attachment_manager import AttachmentManager
-from ui.proxy_manager      import ProxyManager
-from ui.campaign_builder   import CampaignBuilder
-from ui.settings_panel     import SettingsPanel
+# Import UI Managers - using enhanced versions
+def import_managers():
+    """Import managers with enhanced versions as priority"""
+    try:
+        # Try importing enhanced versions first
+        from ui.leads_manager_enhanced import LeadsManagerEnhanced as LeadsManager
+        from ui.smtp_manager_enhanced import SMTPManagerEnhanced as SMTPManager
+        from ui.subjects_manager_enhanced import SubjectsManagerEnhanced as SubjectManager
+        from ui.proxy_manager_enhanced import ProxyManagerEnhanced as ProxyManager
+        print("✅ Using enhanced leads, SMTP, subjects, and proxy managers")
+        
+        # Fallback to original versions for message and attachment managers
+        try:
+            from ui.message_manager import MessageManager
+            from ui.attachment_manager import AttachmentManager
+        except:
+            # Create placeholder managers if needed
+            MessageManager = LeadsManager  # Temporary fallback
+            AttachmentManager = LeadsManager  # Temporary fallback
+            
+        print("✅ Using enhanced managers with original fallbacks")
+        return LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, True
+        
+    except Exception as e:
+        print(f"⚠️ Fallback to original managers: {e}")
+        try:
+            from ui.leads_manager import LeadsManager
+            from ui.smtp_manager import SMTPManager
+            from ui.proxy_manager import ProxyManager
+            from ui.subject_manager import SubjectManager
+            from ui.message_manager import MessageManager
+            from ui.attachment_manager import AttachmentManager
+            return LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, False
+        except Exception as e2:
+            print(f"❌ Error importing original managers: {e2}")
+            raise e2
+
+# Import managers
+LeadsManager, SMTPManager, ProxyManager, SubjectManager, MessageManager, AttachmentManager, using_improved = import_managers()
+
+# These remain unchanged for now
+from ui.campaign_builder import CampaignBuilder
+from ui.settings_panel import SettingsPanel
+
+# Import foundation components for logging
+from core.utils.logger import get_module_logger
+
+logger = get_module_logger(__name__)
 
 # --- StatCard ---
 # (Remains the same - no changes needed here)
@@ -221,16 +260,12 @@ class MainWindow(QMainWindow):
              self.dashboard_widget.refreshFinished.connect(self._hide_loading_indicator)
         else: print("E: Dashboard widget not found post-build.")
 
-        # *** Connect MessageManager signal ***
-        message_manager_widget = self.stack.widget(self.NAV_MAP["Messages"])
-        if isinstance(message_manager_widget, MessageManager):
-            print("Connecting MessageManager.counts_changed signal...")
-            message_manager_widget.counts_changed.connect(self._update_message_dashboard_count)
-            # *** Trigger initial count update ***
-            print("Triggering initial message count update...")
-            message_manager_widget._update_dashboard_counts()
+        # *** Connect manager signals if available ***
+        if hasattr(self, 'message_manager') and self.message_manager:
+            logger.info("Connecting MessageManager signal if available")
+            # Signal is already connected above during widget creation if available
         else:
-            print(f"W: Widget at index {self.NAV_MAP['Messages']} is not MessageManager. Cannot connect signal.")
+            logger.warning("MessageManager not found, cannot connect signal")
 
         # Setup refresh timer for dashboard (excluding messages card now)
         if isinstance(self.dashboard_widget, DashboardWidget):
@@ -283,71 +318,226 @@ class MainWindow(QMainWindow):
             print(f"Current widget ({current_widget.__class__.__name__}) has no _refresh_list method.")
 
     def _build_ui(self):
-        # (UI Building logic remains mostly the same,
-        # ensures dashboard_widget is created)
-        root = QWidget(); self.setCentralWidget(root); layout = QVBoxLayout(root); layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0); splitter = QSplitter(Qt.Orientation.Horizontal)
-        sidebar_widget = QWidget(); sidebar_widget.setObjectName("sidebarWidget"); sidebar_layout = QVBoxLayout(sidebar_widget); sidebar_layout.setContentsMargins(5, 5, 5, 5); sidebar_layout.setSpacing(10)
-        self.nav = QListWidget(); self.nav.setObjectName("navigationList"); self.nav.setMaximumWidth(300); self.nav.setIconSize(QSize(24, 24))
-        self.nav_items_in_order = [ "Dashboard", "Leads", "SMTPs", "Subjects", "Messages", "Attachments", "Proxies", "Campaigns", "Settings" ]
-        icon_files = [ "dashboard.ico", "leads.ico", "smtp.ico", "subject.ico", "message.ico", "attachment.ico", "proxy.ico", "campaign.ico", "settings.ico" ]
+        # Create responsive main layout
+        root = QWidget()
+        self.setCentralWidget(root)
+        layout = QHBoxLayout(root)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # Create main splitter for responsive design
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(1)
+        
+        # Enhanced sidebar with responsive sizing
+        sidebar_widget = QWidget()
+        sidebar_widget.setObjectName("sidebarWidget")
+        sidebar_layout = QVBoxLayout(sidebar_widget)
+        sidebar_layout.setContentsMargins(10, 10, 10, 10)
+        sidebar_layout.setSpacing(8)
+        
+        # Enhanced navigation list with proper sizing
+        self.nav = QListWidget()
+        self.nav.setObjectName("navigationList")
+        self.nav.setMinimumWidth(200)
+        self.nav.setMaximumWidth(350)
+        self.nav.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.nav.setIconSize(QSize(20, 20))
+        # Navigation items with better organization
+        self.nav_items_in_order = [
+            "Dashboard", "Leads", "SMTPs", "Subjects", 
+            "Messages", "Attachments", "Proxies", "Campaigns", "Settings"
+        ]
+        icon_files = [
+            "dashboard.ico", "leads.ico", "smtp.ico", "subject.ico", 
+            "message.ico", "attachment.ico", "proxy.ico", "campaign.ico", "settings.ico"
+        ]
         self.NAV_MAP = {label: index for index, label in enumerate(self.nav_items_in_order)}
-        icon_base = os.path.join(self.base_path, 'assets','icons')
+        icon_base = os.path.join(self.base_path, 'assets', 'icons')
+        
+        # Add navigation items with proper sizing
         for i, text in enumerate(self.nav_items_in_order):
             icon_path = os.path.join(icon_base, icon_files[i])
             if not os.path.exists(icon_path):
-                 print(f"W: Icon missing '{icon_path}'. Using default.")
-                 icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_FileDialogDetailedView if text == "Settings" else QApplication.style().StandardPixmap.SP_FileIcon)
-            else: icon = QIcon(icon_path)
-            item = QListWidgetItem(icon, text); item.setSizeHint(QSize(item.sizeHint().width(), 48)); item.setToolTip(text); self.nav.addItem(item)
+                print(f"W: Icon missing '{icon_path}'. Using default.")
+                icon = QApplication.style().standardIcon(
+                    QApplication.style().StandardPixmap.SP_FileDialogDetailedView 
+                    if text == "Settings" else QApplication.style().StandardPixmap.SP_FileIcon
+                )
+            else:
+                icon = QIcon(icon_path)
+            
+            item = QListWidgetItem(icon, f"  {text}")  # Add spacing for better appearance
+            item.setSizeHint(QSize(0, 44))  # Consistent height, auto width
+            item.setToolTip(text)
+            self.nav.addItem(item)
+        
         sidebar_layout.addWidget(self.nav)
-        refresh_layout = QHBoxLayout()
-        self.refresh_button = QPushButton(" Refresh")
+        
+        # Enhanced refresh section with better layout
+        refresh_section = QFrame()
+        refresh_section.setFrameStyle(QFrame.Shape.StyledPanel)
+        refresh_section.setMaximumHeight(60)
+        refresh_layout = QHBoxLayout(refresh_section)
+        refresh_layout.setContentsMargins(8, 8, 8, 8)
+        refresh_layout.setSpacing(8)
+        
+        # Refresh button with better styling
+        self.refresh_button = QPushButton("🔄 Refresh")
         self.refresh_button.setObjectName("sidebarRefreshButton")
-        refresh_icon = QApplication.style().standardIcon(QApplication.style().StandardPixmap.SP_BrowserReload)
-        if not refresh_icon.isNull(): self.refresh_button.setIcon(refresh_icon)
         self.refresh_button.setToolTip("Refresh dashboard counts and current list view")
         self.refresh_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.refresh_button.clicked.connect(self._trigger_global_refresh)
-        refresh_layout.addWidget(self.refresh_button)
-        self.loading_label = QLabel(); self.loading_label.setObjectName("loadingIndicator")
+        self.refresh_button.setMinimumHeight(32)
+        
+        # Loading indicator
+        self.loading_label = QLabel()
+        self.loading_label.setObjectName("loadingIndicator")
         loading_gif_path = os.path.join(self.base_path, 'assets', 'icons', 'loading.gif')
         if os.path.exists(loading_gif_path):
-            self.loading_movie = QMovie(loading_gif_path); self.loading_movie.setScaledSize(QSize(16, 16)); self.loading_label.setMovie(self.loading_movie)
-        else: print("W: loading.gif not found. Loading indicator disabled."); self.loading_movie = None
-        self.loading_label.setFixedSize(16, 16); self.loading_label.hide()
+            self.loading_movie = QMovie(loading_gif_path)
+            self.loading_movie.setScaledSize(QSize(16, 16))
+            self.loading_label.setMovie(self.loading_movie)
+        else:
+            print("W: loading.gif not found. Loading indicator disabled.")
+            self.loading_movie = None
+        self.loading_label.setFixedSize(16, 16)
+        self.loading_label.hide()
+        
+        refresh_layout.addWidget(self.refresh_button)
         refresh_layout.addWidget(self.loading_label)
-        refresh_layout.addStretch(1)
-        sidebar_layout.addLayout(refresh_layout)
+        refresh_layout.addStretch()
+        
+        sidebar_layout.addWidget(refresh_section)
+        
+        # Set minimum sidebar width to prevent text cutoff
+        sidebar_widget.setMinimumWidth(220)
+        sidebar_widget.setMaximumWidth(380)
+        
+        # Add sidebar to splitter
         splitter.addWidget(sidebar_widget)
-        self.stack = QStackedWidget(); self.stack.setObjectName("contentStack")
-        # *** Ensure dashboard_widget is created HERE ***
+        
+        # Create content area with proper responsive design
+        self.stack = QStackedWidget()
+        self.stack.setObjectName("contentStack")
+        self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        
+        # Ensure dashboard widget is created
         self.dashboard_widget = DashboardWidget(self.base_path, self.data_dir)
         self.stack.addWidget(self.dashboard_widget)
-        # Add other managers... ensure MessageManager is added at the correct index
-        self.stack.addWidget(LeadsManager())
-        self.stack.addWidget(SMTPManager())
-        self.stack.addWidget(SubjectManager())
-        # Make sure MessageManager is at index NAV_MAP["Messages"] (which is 4)
-        self.stack.addWidget(MessageManager()) # <<< This needs to be the correct instance
-        self.stack.addWidget(AttachmentManager())
-        self.stack.addWidget(ProxyManager())
-        self.stack.addWidget(CampaignBuilder())
-        self.settings_panel = SettingsPanel(self.base_path, self.config, self.config_path); self.stack.addWidget(self.settings_panel)
+        
+        # Add content area to splitter
         splitter.addWidget(self.stack)
-        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 1); splitter.setSizes([250, 1350]); splitter.setHandleWidth(2)
-        splitter.setStyleSheet("QSplitter::handle { background-color: #C0C4CC; } QSplitter::handle:hover { background-color: #A0A4AC; } QSplitter::handle:pressed { background-color: #8A8E96; }")
+        
+        # Set splitter proportions for responsive design
+        splitter.setSizes([280, 1000])  # Sidebar: content ratio
+        splitter.setStretchFactor(0, 0)  # Sidebar doesn't stretch
+        splitter.setStretchFactor(1, 1)  # Content area stretches
+        
+        # Add splitter to main layout
         layout.addWidget(splitter)
-        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex); self.nav.setCurrentRow(0)
+        
+        # Add managers using improved threaded versions
+        logger.info("Initializing UI managers")
+        
+        # Leads Manager (Improved with threading)
+        self.leads_manager = LeadsManager()
+        if hasattr(self.leads_manager, 'counts_changed'):
+            self.leads_manager.counts_changed.connect(self._update_leads_stats)
+        self.stack.addWidget(self.leads_manager)
+        
+        # SMTP Manager (Improved with threading)
+        self.smtp_manager = SMTPManager()
+        if hasattr(self.smtp_manager, 'counts_changed'):
+            self.smtp_manager.counts_changed.connect(self._update_smtp_stats)
+        self.stack.addWidget(self.smtp_manager)
+        
+        # Subject Manager (Improved with threading)
+        self.subject_manager = SubjectManager()
+        if hasattr(self.subject_manager, 'counts_changed'):
+            self.subject_manager.counts_changed.connect(self._update_subject_stats)
+        self.stack.addWidget(self.subject_manager)
+        
+        # Message Manager (Improved with threading)
+        self.message_manager = MessageManager()
+        if hasattr(self.message_manager, 'counts_changed'):
+            self.message_manager.counts_changed.connect(self._update_message_dashboard_count)
+        self.stack.addWidget(self.message_manager)
+        
+        # Attachment Manager (Improved with threading)
+        self.attachment_manager = AttachmentManager()
+        if hasattr(self.attachment_manager, 'counts_changed'):
+            self.attachment_manager.counts_changed.connect(self._update_attachment_stats)
+        self.stack.addWidget(self.attachment_manager)
+        
+        # Proxy Manager (Improved with threading)
+        self.proxy_manager = ProxyManager()
+        if hasattr(self.proxy_manager, 'counts_changed'):
+            self.proxy_manager.counts_changed.connect(self._update_proxy_stats)
+        self.stack.addWidget(self.proxy_manager)
+        
+        # Campaign Builder (Original)
+        self.campaign_builder = CampaignBuilder()
+        self.stack.addWidget(self.campaign_builder)
+        
+        # Settings Panel
+        self.settings_panel = SettingsPanel(self.base_path, self.config, self.config_path)
+        self.stack.addWidget(self.settings_panel)
+        
+        # Connect navigation to stack
+        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.nav.setCurrentRow(0)
 
     # *** ADDED: Slot to receive signal from MessageManager ***
-    def _update_message_dashboard_count(self, list_count: int, message_folder_count: int):
+    def _update_message_dashboard_count(self, list_count: int, total_messages: int):
         """Receives counts from MessageManager and updates the dashboard card."""
-        print(f"MainWindow received message counts: Lists={list_count}, Messages={message_folder_count}")
+        logger.debug("Received message counts", lists=list_count, messages=total_messages)
         if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
             # Call the new update method in DashboardWidget
-            self.dashboard_widget.update_card_by_label("Messages", list_count, message_folder_count)
+            self.dashboard_widget.update_card_by_label("Messages", list_count, total_messages)
         else:
-            print("W: Dashboard widget not available to update message count.")
+            logger.warning("Dashboard widget not available to update message count")
+    
+    # *** ADDED: Slots for manager stats (some managers may not have these signals) ***
+    def _update_leads_stats(self, list_count: int, total_leads: int):
+        """Receives counts from LeadsManager and updates the dashboard card."""
+        logger.debug("Received leads counts", lists=list_count, leads=total_leads)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Leads", list_count, total_leads)
+        else:
+            logger.warning("Dashboard widget not available to update leads count")
+    
+    def _update_smtp_stats(self, list_count: int, total_smtps: int):
+        """Receives counts from SMTPManager and updates the dashboard card."""
+        logger.debug("Received SMTP counts", lists=list_count, smtps=total_smtps)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("SMTPs", list_count, total_smtps)
+        else:
+            logger.warning("Dashboard widget not available to update SMTP count")
+    
+    def _update_subject_stats(self, list_count: int, total_subjects: int):
+        """Receives counts from SubjectManager and updates the dashboard card."""
+        logger.debug("Received subject counts", lists=list_count, subjects=total_subjects)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Subjects", list_count, total_subjects)
+        else:
+            logger.warning("Dashboard widget not available to update subject count")
+    
+    def _update_attachment_stats(self, list_count: int, total_attachments: int):
+        """Receives counts from AttachmentManager and updates the dashboard card."""
+        logger.debug("Received attachment counts", lists=list_count, attachments=total_attachments)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Attachments", list_count, total_attachments)
+        else:
+            logger.warning("Dashboard widget not available to update attachment count")
+    
+    def _update_proxy_stats(self, list_count: int, total_proxies: int):
+        """Receives counts from ProxyManager and updates the dashboard card."""
+        logger.debug("Received proxy counts", lists=list_count, proxies=total_proxies)
+        if hasattr(self, 'dashboard_widget') and self.dashboard_widget:
+            self.dashboard_widget.update_card_by_label("Proxies", list_count, total_proxies)
+        else:
+            logger.warning("Dashboard widget not available to update proxy count")
 
     # (closeEvent remains the same)
     def closeEvent(self, event):

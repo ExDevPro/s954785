@@ -4,7 +4,7 @@ import os
 import json
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QMessageBox, QSizePolicy, QSpacerItem
+    QPushButton, QMessageBox, QSizePolicy, QSpacerItem, QSpinBox
 )
 from PyQt6.QtCore import Qt
 
@@ -47,7 +47,44 @@ class SettingsPanel(QWidget):
         theme_group_layout.addStretch(1)
         main_layout.addLayout(theme_group_layout)
 
-        # --- Font Selection Removed ---
+        # --- Leads Settings ---
+        leads_group_layout = QHBoxLayout()
+        chunk_label = QLabel("Leads Chunk Size:")
+        chunk_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        leads_group_layout.addWidget(chunk_label)
+        
+        self.chunk_size_spin = QSpinBox()
+        self.chunk_size_spin.setRange(100, 10000)
+        self.chunk_size_spin.setValue(500)  # Default value
+        self.chunk_size_spin.setSuffix(" records")
+        self.chunk_size_spin.setToolTip("Number of leads to display per page")
+        self.chunk_size_spin.setMaximumWidth(150)
+        self.chunk_size_spin.valueChanged.connect(self._on_chunk_size_changed)
+        leads_group_layout.addWidget(self.chunk_size_spin)
+        
+        leads_group_layout.addStretch(1)
+        main_layout.addLayout(leads_group_layout)
+
+        # --- Auto-save Settings ---
+        autosave_group_layout = QHBoxLayout()
+        autosave_label = QLabel("Auto-save Delay:")
+        autosave_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        autosave_group_layout.addWidget(autosave_label)
+        
+        self.autosave_spin = QSpinBox()
+        self.autosave_spin.setRange(1, 60)
+        self.autosave_spin.setValue(5)  # Default 5 seconds
+        self.autosave_spin.setSuffix(" seconds")
+        self.autosave_spin.setToolTip("Delay before auto-saving changes")
+        self.autosave_spin.setMaximumWidth(150)
+        self.autosave_spin.valueChanged.connect(self._on_autosave_delay_changed)
+        autosave_group_layout.addWidget(self.autosave_spin)
+        
+        autosave_group_layout.addStretch(1)
+        main_layout.addLayout(autosave_group_layout)
+
+        # Load saved values
+        self._load_settings()
 
         main_layout.addStretch(1)
 
@@ -135,5 +172,55 @@ class SettingsPanel(QWidget):
              if self.current_theme_name:
                  current_index = self.theme_combo.findText(self.current_theme_name)
                  if current_index >= 0: self.theme_combo.blockSignals(True); self.theme_combo.setCurrentIndex(current_index); self.theme_combo.blockSignals(False)
+
+    def _load_settings(self):
+        """Load saved settings values."""
+        # Load chunk size
+        if hasattr(self.config, 'get'):
+            chunk_size = self.config.get('leads.chunk_size', 500)
+            autosave_delay = self.config.get('general.autosave_delay', 5)
+        else:
+            chunk_size = self.config.get('leads.chunk_size', 500)
+            autosave_delay = self.config.get('general.autosave_delay', 5)
+        
+        self.chunk_size_spin.blockSignals(True)
+        self.chunk_size_spin.setValue(chunk_size)
+        self.chunk_size_spin.blockSignals(False)
+        
+        self.autosave_spin.blockSignals(True)
+        self.autosave_spin.setValue(autosave_delay)
+        self.autosave_spin.blockSignals(False)
+    
+    def _on_chunk_size_changed(self, value):
+        """Handle chunk size change."""
+        self._save_setting('leads.chunk_size', value)
+    
+    def _on_autosave_delay_changed(self, value):
+        """Handle auto-save delay change."""
+        self._save_setting('general.autosave_delay', value)
+    
+    def _save_setting(self, key, value):
+        """Save a setting value."""
+        try:
+            if hasattr(self.config, 'set'):
+                self.config.set(key, value)
+                if hasattr(self.config, 'save'):
+                    self.config.save()
+            else:
+                # Handle dict-style config
+                keys = key.split('.')
+                config_ref = self.config
+                for k in keys[:-1]:
+                    if k not in config_ref:
+                        config_ref[k] = {}
+                    config_ref = config_ref[k]
+                config_ref[keys[-1]] = value
+                
+                # Save to file
+                os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+                with open(self.config_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, indent=4)
+        except Exception as e:
+            print(f"Failed to save setting {key}: {e}")
 
     # *** REMOVED All Font Handling Methods ***

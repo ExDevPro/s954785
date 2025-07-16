@@ -1,4 +1,5 @@
-# ui/attachment_manager.py (Complete Code: Auto Dedupe, Columns, Icons, Fixes)
+# Enhanced Attachment Manager with Description Support
+
 import os
 import shutil
 import hashlib
@@ -9,19 +10,762 @@ from PyQt6.QtWidgets import (
     QWidget, QLabel, QListWidget, QListWidgetItem, QPushButton, QLineEdit,
     QFileDialog, QMessageBox, QHBoxLayout, QVBoxLayout, QInputDialog,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QMenu,
-    QFileIconProvider # Correct icon provider import
+    QFileIconProvider, QDialog, QDialogButtonBox, QTextEdit, QFrame, QSplitter,
+    QScrollArea, QSizePolicy
 )
-from PyQt6.QtGui import QIcon, QAction, QCursor, QDesktopServices
-# Ensure all necessary QtCore classes are imported
+from PyQt6.QtGui import QIcon, QAction, QCursor, QDesktopServices, QFont
 from PyQt6.QtCore import (
-    Qt, QSize, pyqtSignal, QFileInfo, QUrl, QDateTime, QLocale # QLocale is needed
+    Qt, QSize, pyqtSignal, QFileInfo, QUrl, QDateTime, QLocale
 )
+import re
 
-# (BASE_PATH, DATA_DIR, count_attachment_folders_and_files remain the same)
 BASE_PATH = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 DATA_DIR = os.path.join(BASE_PATH, 'data', 'attachments')
 
+class CreateAttachmentListDialog(QDialog):
+    """Professional dialog for creating new attachment lists with descriptions."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create New Attachment List")
+        self.setModal(True)
+        self.setFixedSize(400, 250)
+        
+        layout = QVBoxLayout(self)
+        
+        # List name
+        layout.addWidget(QLabel("List Name:"))
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("Enter attachment list name...")
+        layout.addWidget(self.name_edit)
+        
+        # Description
+        layout.addWidget(QLabel("Description (Optional):"))
+        self.desc_edit = QTextEdit()
+        self.desc_edit.setPlaceholderText("Enter description for this attachment list...")
+        self.desc_edit.setMaximumHeight(80)
+        layout.addWidget(self.desc_edit)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        
+        self.name_edit.textChanged.connect(self._validate_input)
+        self._validate_input()
+    
+    def _validate_input(self):
+        name = self.name_edit.text().strip()
+        valid = bool(name and re.match(r'^[a-zA-Z0-9_\-\s]+$', name))
+        self.findChild(QDialogButtonBox).button(QDialogButtonBox.StandardButton.Ok).setEnabled(valid)
+    
+    def get_list_data(self):
+        return {
+            'name': self.name_edit.text().strip(),
+            'description': self.desc_edit.toPlainText().strip()
+        }
+
+class EnhancedAttachmentManager(QWidget):
+    """Enhanced Attachment Manager with description support and professional UI."""
+    
+    counts_changed = pyqtSignal(int, int)
+    
+    def __init__(self, parent=None, config=None):
+        super().__init__(parent)
+        self.config = config
+        self.current_list = None
+        self.current_list_path = None
+        self.icon_provider = QFileIconProvider()
+        
+        os.makedirs(DATA_DIR, exist_ok=True)
+        
+        self._setup_ui()
+        self._load_lists()
+        self._apply_styling()
+    
+    def _setup_ui(self):
+        """Setup the user interface."""
+        main_layout = QHBoxLayout(self)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Left panel - Lists
+        left_panel = self._create_left_panel()
+        main_layout.addWidget(left_panel, 1)
+        
+        # Splitter for resizable panels
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Right panel - Attachments view
+        right_panel = self._create_right_panel()
+        splitter.addWidget(right_panel)
+        
+        # Description panel
+        desc_panel = self._create_description_panel()
+        splitter.addWidget(desc_panel)
+        
+        splitter.setSizes([600, 200])
+        main_layout.addWidget(splitter, 3)
+    
+    def _create_left_panel(self):
+        """Create the left panel with list management."""
+        panel = QFrame()
+        panel.setFrameStyle(QFrame.Shape.StyledPanel)
+        panel.setMaximumWidth(350)
+        panel.setMinimumWidth(250)
+        
+        layout = QVBoxLayout(panel)
+        
+        # Header
+        header = QLabel("📎 Attachment Lists")
+        header.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.setStyleSheet("QLabel { background: #f39c12; color: white; padding: 8px; border-radius: 4px; }")
+        layout.addWidget(header)
+        
+        # Search
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("🔍 Search lists...")
+        self.search_edit.textChanged.connect(self._filter_lists)
+        layout.addWidget(self.search_edit)
+        
+        # Lists
+        self.attachment_lists = QListWidget()
+        self.attachment_lists.itemClicked.connect(self._on_list_selected)
+        self.attachment_lists.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.attachment_lists.customContextMenuRequested.connect(self._show_list_context_menu)
+        layout.addWidget(self.attachment_lists)
+        
+        # Buttons
+        buttons_layout = QVBoxLayout()
+        
+        self.btn_create_list = QPushButton("➕ New List")
+        self.btn_create_list.clicked.connect(self._create_new_list)
+        self.btn_create_list.setStyleSheet("QPushButton { background: #27ae60; color: white; padding: 8px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_create_list)
+        
+        self.btn_delete_list = QPushButton("🗑️ Delete List")
+        self.btn_delete_list.clicked.connect(self._delete_list)
+        self.btn_delete_list.setStyleSheet("QPushButton { background: #e74c3c; color: white; padding: 8px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_delete_list)
+        
+        layout.addLayout(buttons_layout)
+        
+        return panel
+    
+    def _create_right_panel(self):
+        """Create the right panel with attachments table."""
+        panel = QFrame()
+        panel.setFrameStyle(QFrame.Shape.StyledPanel)
+        
+        layout = QVBoxLayout(panel)
+        
+        # Header
+        header_layout = QHBoxLayout()
+        self.table_header = QLabel("📋 Attachments")
+        self.table_header.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        header_layout.addWidget(self.table_header)
+        
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+        
+        # Attachments table
+        self.attachment_table = QTableWidget()
+        self.attachment_table.setColumnCount(5)
+        self.attachment_table.setHorizontalHeaderLabels(["Icon", "File Name", "Size", "Type", "Date Added"])
+        self.attachment_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.attachment_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.attachment_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.attachment_table.setColumnWidth(0, 40)  # Icon column
+        self.attachment_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.attachment_table.customContextMenuRequested.connect(self._show_attachment_context_menu)
+        layout.addWidget(self.attachment_table)
+        
+        # Buttons
+        buttons_layout = QHBoxLayout()
+        
+        self.btn_add_files = QPushButton("📁 Add Files")
+        self.btn_add_files.clicked.connect(self._add_files)
+        self.btn_add_files.setStyleSheet("QPushButton { background: #27ae60; color: white; padding: 6px 12px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_add_files)
+        
+        self.btn_add_folder = QPushButton("📂 Add Folder")
+        self.btn_add_folder.clicked.connect(self._add_folder)
+        buttons_layout.addWidget(self.btn_add_folder)
+        
+        self.btn_open_file = QPushButton("👁️ Open")
+        self.btn_open_file.clicked.connect(self._open_file)
+        buttons_layout.addWidget(self.btn_open_file)
+        
+        self.btn_remove_file = QPushButton("🗑️ Remove")
+        self.btn_remove_file.clicked.connect(self._remove_file)
+        self.btn_remove_file.setStyleSheet("QPushButton { background: #e74c3c; color: white; padding: 6px 12px; border-radius: 4px; }")
+        buttons_layout.addWidget(self.btn_remove_file)
+        
+        buttons_layout.addStretch()
+        
+        # File count info
+        self.file_count_label = QLabel("0 files")
+        self.file_count_label.setStyleSheet("QLabel { color: #7f8c8d; font-style: italic; }")
+        buttons_layout.addWidget(self.file_count_label)
+        
+        layout.addLayout(buttons_layout)
+        
+        return panel
+    
+    def _create_description_panel(self):
+        """Create the description panel."""
+        panel = QFrame()
+        panel.setFrameStyle(QFrame.Shape.StyledPanel)
+        panel.setMinimumWidth(200)
+        panel.setMaximumWidth(300)
+        
+        layout = QVBoxLayout(panel)
+        
+        # Header
+        header = QLabel("📝 Description")
+        header.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.setStyleSheet("QLabel { background: #95a5a6; color: white; padding: 6px; border-radius: 4px; }")
+        layout.addWidget(header)
+        
+        # Scrollable description area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        self.description_label = QLabel("Select a list to view its description.")
+        self.description_label.setWordWrap(True)
+        self.description_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.description_label.setStyleSheet("QLabel { padding: 10px; background: white; }")
+        
+        scroll_area.setWidget(self.description_label)
+        layout.addWidget(scroll_area)
+        
+        # Edit button
+        self.btn_edit_desc = QPushButton("✏️ Edit Description")
+        self.btn_edit_desc.clicked.connect(self._edit_description)
+        self.btn_edit_desc.setEnabled(False)
+        layout.addWidget(self.btn_edit_desc)
+        
+        return panel
+    
+    def _apply_styling(self):
+        """Apply professional styling."""
+        self.setStyleSheet("""
+            QFrame {
+                border: 1px solid #bdc3c7;
+                border-radius: 6px;
+                background: #ecf0f1;
+            }
+            QListWidget {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                background: white;
+                padding: 5px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #ecf0f1;
+            }
+            QListWidget::item:selected {
+                background: #f39c12;
+                color: white;
+            }
+            QTableWidget {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                background: white;
+                gridline-color: #ecf0f1;
+            }
+            QTableWidget::item {
+                padding: 5px;
+            }
+            QLineEdit {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #f39c12;
+            }
+            QPushButton {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 6px 12px;
+                background: #ecf0f1;
+            }
+            QPushButton:hover {
+                background: #d5dbdb;
+            }
+            QPushButton:pressed {
+                background: #bdc3c7;
+            }
+        """)
+    
+    # ========== List Management Methods ==========
+    
+    def _load_lists(self):
+        """Load all available attachment lists."""
+        self.attachment_lists.clear()
+        
+        for item in os.listdir(DATA_DIR):
+            item_path = os.path.join(DATA_DIR, item)
+            if os.path.isdir(item_path):
+                self.attachment_lists.addItem(item)
+        
+        self._update_counts()
+    
+    def _filter_lists(self):
+        """Filter lists based on search text."""
+        search_text = self.search_edit.text().lower()
+        for i in range(self.attachment_lists.count()):
+            item = self.attachment_lists.item(i)
+            item.setHidden(search_text not in item.text().lower())
+    
+    def _create_new_list(self):
+        """Create a new attachment list."""
+        dialog = CreateAttachmentListDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            data = dialog.get_list_data()
+            list_name = data['name']
+            description = data['description']
+            
+            # Check if list already exists
+            list_dir = os.path.join(DATA_DIR, list_name)
+            if os.path.exists(list_dir):
+                QMessageBox.warning(self, "List Exists", f"An attachment list named '{list_name}' already exists.")
+                return
+            
+            try:
+                # Create list directory
+                os.makedirs(list_dir, exist_ok=True)
+                
+                # Save description
+                if description:
+                    desc_file = os.path.join(list_dir, "description.txt")
+                    with open(desc_file, 'w', encoding='utf-8') as f:
+                        f.write(description)
+                
+                self._load_lists()
+                
+                # Select the new list
+                for i in range(self.attachment_lists.count()):
+                    if self.attachment_lists.item(i).text() == list_name:
+                        self.attachment_lists.setCurrentRow(i)
+                        self._on_list_selected(self.attachment_lists.item(i))
+                        break
+                
+                QMessageBox.information(self, "Success", f"Attachment list '{list_name}' created successfully.")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create list: {str(e)}")
+    
+    def _delete_list(self):
+        """Delete the selected attachment list."""
+        current_item = self.attachment_lists.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, "No Selection", "Please select a list to delete.")
+            return
+        
+        list_name = current_item.text()
+        
+        reply = QMessageBox.question(
+            self, "Confirm Delete",
+            f"Are you sure you want to delete the attachment list '{list_name}'?\n\nThis action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                list_dir = os.path.join(DATA_DIR, list_name)
+                shutil.rmtree(list_dir)
+                
+                self._load_lists()
+                self._clear_attachments_view()
+                
+                QMessageBox.information(self, "Success", f"Attachment list '{list_name}' deleted successfully.")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to delete list: {str(e)}")
+    
+    def _on_list_selected(self, item):
+        """Handle list selection."""
+        if not item:
+            return
+        
+        list_name = item.text()
+        self.current_list = list_name
+        self.current_list_path = os.path.join(DATA_DIR, list_name)
+        
+        # Update description
+        self._load_description(list_name)
+        
+        # Load attachments
+        self._load_attachments()
+        
+        # Update UI
+        self.table_header.setText(f"📋 {list_name} - Attachments")
+        self.btn_edit_desc.setEnabled(True)
+    
+    def _load_description(self, list_name):
+        """Load and display list description."""
+        desc_file = os.path.join(DATA_DIR, list_name, "description.txt")
+        
+        if os.path.exists(desc_file):
+            try:
+                with open(desc_file, 'r', encoding='utf-8') as f:
+                    description = f.read().strip()
+                
+                if description:
+                    self.description_label.setText(description)
+                else:
+                    self.description_label.setText("No description available.")
+            except Exception as e:
+                self.description_label.setText(f"Error loading description: {str(e)}")
+        else:
+            self.description_label.setText("No description available.")
+    
+    def _edit_description(self):
+        """Edit the description of the current list."""
+        if not self.current_list:
+            return
+        
+        desc_file = os.path.join(DATA_DIR, self.current_list, "description.txt")
+        current_desc = ""
+        
+        if os.path.exists(desc_file):
+            try:
+                with open(desc_file, 'r', encoding='utf-8') as f:
+                    current_desc = f.read().strip()
+            except:
+                pass
+        
+        new_desc, ok = QInputDialog.getMultiLineText(
+            self, "Edit Description", 
+            f"Description for '{self.current_list}':",
+            current_desc
+        )
+        
+        if ok:
+            try:
+                if new_desc.strip():
+                    with open(desc_file, 'w', encoding='utf-8') as f:
+                        f.write(new_desc.strip())
+                else:
+                    # Remove description file if empty
+                    if os.path.exists(desc_file):
+                        os.remove(desc_file)
+                
+                self._load_description(self.current_list)
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to save description: {str(e)}")
+    
+    def _load_attachments(self):
+        """Load attachments for the selected list."""
+        if not self.current_list_path:
+            return
+        
+        self.attachment_table.setRowCount(0)
+        
+        try:
+            files = []
+            for item in os.listdir(self.current_list_path):
+                item_path = os.path.join(self.current_list_path, item)
+                if os.path.isfile(item_path) and item != "description.txt":
+                    files.append(item)
+            
+            files.sort()  # Sort alphabetically
+            
+            for filename in files:
+                self._add_file_to_table(filename)
+            
+            self.file_count_label.setText(f"{len(files)} files")
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load attachments: {str(e)}")
+    
+    def _add_file_to_table(self, filename):
+        """Add a file to the attachments table."""
+        file_path = os.path.join(self.current_list_path, filename)
+        
+        row = self.attachment_table.rowCount()
+        self.attachment_table.insertRow(row)
+        
+        # Icon
+        file_info = QFileInfo(file_path)
+        icon = self.icon_provider.icon(file_info)
+        icon_item = QTableWidgetItem("")
+        icon_item.setIcon(icon)
+        self.attachment_table.setItem(row, 0, icon_item)
+        
+        # File name
+        self.attachment_table.setItem(row, 1, QTableWidgetItem(filename))
+        
+        # File size
+        try:
+            size = os.path.getsize(file_path)
+            size_str = self._format_file_size(size)
+        except:
+            size_str = "Unknown"
+        self.attachment_table.setItem(row, 2, QTableWidgetItem(size_str))
+        
+        # File type
+        ext = os.path.splitext(filename)[1].upper()
+        if ext:
+            file_type = ext[1:] + " File"  # Remove the dot
+        else:
+            file_type = "File"
+        self.attachment_table.setItem(row, 3, QTableWidgetItem(file_type))
+        
+        # Date added
+        try:
+            mtime = os.path.getmtime(file_path)
+            date_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+        except:
+            date_str = "Unknown"
+        self.attachment_table.setItem(row, 4, QTableWidgetItem(date_str))
+    
+    def _format_file_size(self, size):
+        """Format file size in human-readable format."""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size < 1024.0:
+                return f"{size:.1f} {unit}"
+            size /= 1024.0
+        return f"{size:.1f} PB"
+    
+    def _clear_attachments_view(self):
+        """Clear the attachments view."""
+        self.attachment_table.setRowCount(0)
+        self.current_list = None
+        self.current_list_path = None
+        self.table_header.setText("📋 Attachments")
+        self.file_count_label.setText("0 files")
+        self.description_label.setText("Select a list to view its description.")
+        self.btn_edit_desc.setEnabled(False)
+    
+    # ========== File Management Methods ==========
+    
+    def _add_files(self):
+        """Add files to the current list."""
+        if not self.current_list_path:
+            QMessageBox.warning(self, "No List", "Please select a list first.")
+            return
+        
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self, "Add Files", "", "All Files (*)"
+        )
+        
+        if file_paths:
+            try:
+                added_count = 0
+                skipped_count = 0
+                
+                for file_path in file_paths:
+                    filename = os.path.basename(file_path)
+                    target_path = os.path.join(self.current_list_path, filename)
+                    
+                    if os.path.exists(target_path):
+                        reply = QMessageBox.question(
+                            self, "File Exists",
+                            f"'{filename}' already exists. Replace it?",
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                            QMessageBox.StandardButton.No
+                        )
+                        
+                        if reply == QMessageBox.StandardButton.No:
+                            skipped_count += 1
+                            continue
+                    
+                    shutil.copy2(file_path, target_path)
+                    added_count += 1
+                
+                self._load_attachments()
+                self._update_counts()
+                
+                msg = f"Added {added_count} file(s)"
+                if skipped_count > 0:
+                    msg += f", skipped {skipped_count} file(s)"
+                QMessageBox.information(self, "Files Added", msg)
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to add files: {str(e)}")
+    
+    def _add_folder(self):
+        """Add all files from a folder to the current list."""
+        if not self.current_list_path:
+            QMessageBox.warning(self, "No List", "Please select a list first.")
+            return
+        
+        folder_path = QFileDialog.getExistingDirectory(self, "Add Folder")
+        
+        if folder_path:
+            try:
+                added_count = 0
+                skipped_count = 0
+                
+                for root, dirs, files in os.walk(folder_path):
+                    for filename in files:
+                        source_path = os.path.join(root, filename)
+                        target_path = os.path.join(self.current_list_path, filename)
+                        
+                        if os.path.exists(target_path):
+                            reply = QMessageBox.question(
+                                self, "File Exists",
+                                f"'{filename}' already exists. Replace it?",
+                                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                QMessageBox.StandardButton.No
+                            )
+                            
+                            if reply == QMessageBox.StandardButton.No:
+                                skipped_count += 1
+                                continue
+                        
+                        shutil.copy2(source_path, target_path)
+                        added_count += 1
+                
+                self._load_attachments()
+                self._update_counts()
+                
+                msg = f"Added {added_count} file(s) from folder"
+                if skipped_count > 0:
+                    msg += f", skipped {skipped_count} file(s)"
+                QMessageBox.information(self, "Folder Added", msg)
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to add folder: {str(e)}")
+    
+    def _open_file(self):
+        """Open the selected file."""
+        row = self.attachment_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "No Selection", "Please select a file to open.")
+            return
+        
+        filename = self.attachment_table.item(row, 1).text()
+        file_path = os.path.join(self.current_list_path, filename)
+        
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(file_path))
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open file: {str(e)}")
+    
+    def _remove_file(self):
+        """Remove the selected file."""
+        selected_rows = set()
+        for item in self.attachment_table.selectedItems():
+            selected_rows.add(item.row())
+        
+        if not selected_rows:
+            QMessageBox.warning(self, "No Selection", "Please select file(s) to remove.")
+            return
+        
+        reply = QMessageBox.question(
+            self, "Confirm Remove",
+            f"Are you sure you want to remove {len(selected_rows)} file(s)?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                for row in sorted(selected_rows):
+                    filename = self.attachment_table.item(row, 1).text()
+                    file_path = os.path.join(self.current_list_path, filename)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                
+                self._load_attachments()
+                self._update_counts()
+                
+                QMessageBox.information(self, "Success", f"Removed {len(selected_rows)} file(s).")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to remove files: {str(e)}")
+    
+    # ========== Context Menu Methods ==========
+    
+    def _show_list_context_menu(self, position):
+        """Show context menu for lists."""
+        item = self.attachment_lists.itemAt(position)
+        
+        menu = QMenu()
+        
+        if item:
+            menu.addAction("📂 Open", lambda: self._on_list_selected(item))
+            menu.addSeparator()
+            menu.addAction("✏️ Edit Description", self._edit_description)
+            menu.addSeparator()
+            menu.addAction("🗑️ Delete", self._delete_list)
+        
+        menu.addSeparator()
+        menu.addAction("➕ New List", self._create_new_list)
+        menu.addAction("🔄 Refresh", self._load_lists)
+        
+        menu.exec(self.attachment_lists.mapToGlobal(position))
+    
+    def _show_attachment_context_menu(self, position):
+        """Show context menu for attachments."""
+        menu = QMenu()
+        
+        menu.addAction("📁 Add Files", self._add_files)
+        menu.addAction("📂 Add Folder", self._add_folder)
+        
+        if self.attachment_table.currentRow() >= 0:
+            menu.addSeparator()
+            menu.addAction("👁️ Open", self._open_file)
+            menu.addAction("🗑️ Remove", self._remove_file)
+        
+        menu.exec(self.attachment_table.mapToGlobal(position))
+    
+    # ========== Utility Methods ==========
+    
+    def _update_counts(self):
+        """Update the counts and emit signal."""
+        folder_count, file_count = self.count_attachment_folders_and_files()
+        self.counts_changed.emit(folder_count, file_count)
+    
+    def count_attachment_folders_and_files(self):
+        """Count attachment folders and files for dashboard."""
+        folder_count = 0
+        total_file_count = 0
+        
+        try:
+            if os.path.isdir(DATA_DIR):
+                for item_name in os.listdir(DATA_DIR):
+                    item_path = os.path.join(DATA_DIR, item_name)
+                    if os.path.isdir(item_path):
+                        folder_count += 1
+                        try:
+                            files_in_folder = [
+                                f for f in os.listdir(item_path) 
+                                if os.path.isfile(os.path.join(item_path, f)) and f != "description.txt"
+                            ]
+                            total_file_count += len(files_in_folder)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+        
+        return folder_count, total_file_count
+    
+    # ========== Public Methods ==========
+    
+    def get_list_count(self):
+        """Get the number of attachment lists."""
+        return self.attachment_lists.count()
+    
+    def refresh_lists(self):
+        """Refresh the lists display."""
+        self._load_lists()
+
+# Original function for compatibility
 def count_attachment_folders_and_files(base_dir):
+    """Count attachment folders and files (compatibility function)."""
     folder_count = 0
     total_file_count = 0
     try:
@@ -33,21 +777,14 @@ def count_attachment_folders_and_files(base_dir):
                     try:
                         files_in_folder = [f for f in os.listdir(item_path) if os.path.isfile(os.path.join(item_path, f))]
                         total_file_count += len(files_in_folder)
-                    except Exception: pass
-    except Exception: pass
-    # print(f"Attachment count: {folder_count} lists, {total_file_count} total files")
+                    except Exception: 
+                        pass
+    except Exception: 
+        pass
     return folder_count, total_file_count
 
-class AttachmentManager(QWidget):
-    counts_changed = pyqtSignal(int, int)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        os.makedirs(DATA_DIR, exist_ok=True)
-        self.current_list_path = None
-        self.icon_provider = QFileIconProvider() # Correct provider
-        self._build_ui()
-        self._refresh_list()
+# Maintain backward compatibility
+AttachmentManager = EnhancedAttachmentManager
 
     def _build_ui(self):
         main_layout = QHBoxLayout(self)
